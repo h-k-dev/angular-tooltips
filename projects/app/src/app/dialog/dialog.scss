@@ -1,0 +1,81 @@
+// ─── Header with close button ─────────────────────────────────────────────────
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 0.75rem;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+// ─── Scroll viewport ──────────────────────────────────────────────────────────
+// mat-dialog-content is the scroll container; capping its height guarantees
+// the four direction groups overflow, so the tooltip's scroll tracking and
+// leave-viewport hiding are observable inside the dialog too.
+.dialog-content {
+  max-height: 45vh;
+}
+
+.dialog-hint {
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.6;
+  margin: 0 0 1.25rem;
+}
+
+// ─── One group per placement ──────────────────────────────────────────────────
+.direction-group {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+
+  &:last-child {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.direction-group__title {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mat-sys-primary);
+}
+
+.direction-group__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+// ─── Anchor element flavours ──────────────────────────────────────────────────
+.demo-link {
+  color: var(--mat-sys-primary);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.demo-span {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+  padding: 0.2em 0.5em;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: help;
+}
+
+.demo-div {
+  background: var(--mat-sys-surface-container-low);
+  border: 1px dashed var(--mat-sys-outline-variant);
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+  cursor: help;
+}

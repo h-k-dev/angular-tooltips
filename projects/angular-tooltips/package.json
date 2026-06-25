@@ -1,0 +1,31 @@
+{
+  "name": "@h-k-dev/angular-tooltips",
+  "version": "0.0.0-development",
+  "description": "A lightweight, signal-based Angular tooltip directive built on native popovers and CSS anchor positioning, with a single shared tooltip element and Interest Invokers support.",
+  "license": "MIT",
+  "author": "h-k-dev",
+  "homepage": "https://github.com/h-k-dev/angular-tooltips#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/h-k-dev/angular-tooltips.git"
+  },
+  "bugs": {
+    "url": "https://github.com/h-k-dev/angular-tooltips/issues"
+  },
+  "keywords": [
+    "angular",
+    "tooltip",
+    "tooltips",
+    "directive",
+    "popover",
+    "anchor-positioning"
+  ],
+  "peerDependencies": {
+    "@angular/common": "^20.0.0 || ^21.0.0 || ^22.0.0",
+    "@angular/core": "^20.0.0 || ^21.0.0 || ^22.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false
+}
