@@ -1,0 +1,273 @@
+// ─── Host layout ─────────────────────────────────────────────────────────────
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+// ─── Toolbar ──────────────────────────────────────────────────────────────────
+.spacer {
+  flex: 1 1 auto;
+}
+
+.toolbar__title {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+// ─── Main content ─────────────────────────────────────────────────────────────
+main {
+  max-width: 1400px;
+  margin-inline: auto;
+  padding: 2rem;
+  flex: 1;
+}
+
+// ─── Page header ──────────────────────────────────────────────────────────────
+.page-header {
+  margin-bottom: 2.5rem;
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--mat-sys-on-surface);
+  }
+
+  p {
+    font-size: 1.05rem;
+    color: var(--mat-sys-on-surface-variant);
+    max-width: 65ch;
+    line-height: 1.6;
+  }
+}
+
+// ─── Grid of test cards ──────────────────────────────────────────────────────
+.playground-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+}
+
+// ─── Individual test card ─────────────────────────────────────────────────────
+.test-card {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+  padding: 1.5rem;
+  background: var(--mat-sys-surface);
+
+  h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.4rem;
+    color: var(--mat-sys-on-surface);
+  }
+
+  p {
+    font-size: 0.875rem;
+    color: var(--mat-sys-on-surface-variant);
+    margin: 0 0 1.25rem;
+    line-height: 1.6;
+
+    code {
+      font-size: 0.8rem;
+      background: var(--mat-sys-surface-container-high);
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    em {
+      font-style: italic;
+    }
+
+    strong {
+      font-weight: 600;
+      color: var(--mat-sys-on-surface);
+    }
+  }
+}
+
+// ─── Shared action row ────────────────────────────────────────────────────────
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+// ─── Card 2: Inline text ──────────────────────────────────────────────────────
+.inline-text {
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: var(--mat-sys-on-surface);
+}
+
+.text-highlight {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  cursor: help;
+  font-weight: 600;
+}
+
+.inline-icon {
+  vertical-align: text-bottom;
+  font-size: 1.15rem;
+  height: 1.15rem;
+  width: 1.15rem;
+  cursor: help;
+  color: var(--mat-sys-primary);
+}
+
+.code-tip {
+  font-family: monospace;
+  font-size: 0.82rem;
+  background: var(--mat-sys-surface-container-high);
+  border-radius: 4px;
+  padding: 1px 6px;
+  cursor: help;
+  color: var(--mat-sys-on-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+// ─── Card 3: Dense grid ──────────────────────────────────────────────────────
+.dense-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 0.5rem;
+}
+
+.grid-cell {
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 6px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: crosshair;
+  color: var(--mat-sys-on-surface-variant);
+  transition: background 0.15s;
+  user-select: none;
+
+  &:hover {
+    background: var(--mat-sys-surface-container);
+  }
+}
+
+// ─── Card 4: Scroll container ─────────────────────────────────────────────────
+.scroll-container {
+  // Height must be short enough that only ONE button is visible at a time.
+  // With two 300px spacers and ~40px buttons, 200px shows one button at once.
+  height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container-lowest);
+
+  // Smooth scroll makes the tracking visible
+  scroll-behavior: smooth;
+}
+
+.scroll-content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: flex-start;
+}
+
+.scroll-spacer {
+  // 300px ensures the button above fully exits the 200px viewport before the
+  // next button enters. This makes hide/reappear observable.
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8rem;
+  font-style: italic;
+  border-left: 2px dashed var(--mat-sys-outline-variant);
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  width: 100%;
+  box-sizing: border-box;
+
+  .spacer-icon {
+    font-size: 1.2rem;
+    height: 1.2rem;
+    width: 1.2rem;
+    opacity: 0.4;
+  }
+}
+
+// Extra padding at the bottom so the last button can scroll to center
+.scroll-pad {
+  height: 120px;
+  flex-shrink: 0;
+}
+
+// ─── Card 5: Transformed parent ───────────────────────────────────────────────
+.transformed-parent {
+  // This is the bug-trigger: any transform creates a new containing block,
+  // which breaks CSS anchor positioning for the singleton popover.
+  // Our canUseCSSAnchor() detects this and falls back to JS mode.
+  transform: translateZ(0);
+  background: var(--mat-sys-surface-container-low);
+  border: 1px dashed var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+// ─── Card 6: Icon button row ──────────────────────────────────────────────────
+.icon-row {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+// ─── Card 7 uses .action-row (already defined above) ─────────────────────────
+
+// ─── Card 8: Placement compass ────────────────────────────────────────────────
+.placement-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 0.5rem;
+}
+
+.placement-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placement-center {
+  // The center cell is just a visual marker
+  font-size: 1.5rem;
+}
+
+.full-width-card {
+  grid-column: 1 / -1;
+}
+
+.test-tooltip {
+  background: var(--mat-sys-surface-container-high);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 1rem;
+}

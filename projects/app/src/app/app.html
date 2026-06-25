@@ -1,0 +1,241 @@
+<mat-toolbar>
+  <div class="spacer"></div>
+  <div class="toolbar__actions">
+    <button mat-icon-button (click)="toggleTheme()" [ngTooltip]="'Toggle dark/light mode'">
+      @if (theme() === 'dark') {
+      <mat-icon>dark_mode</mat-icon>
+      } @else {
+      <mat-icon>light_mode</mat-icon>
+      }
+    </button>
+    <button mat-icon-button [ngTooltip]="'Toggle dark/light mode'" ngTooltipPlacement="top" (click)="openSettings()">
+      <mat-icon>settings</mat-icon>
+    </button>
+  </div>
+</mat-toolbar>
+
+<main>
+  <header class="page-header">
+    <h1>Modern Tooltip Playground</h1>
+    <p>
+      Testing the singleton-popover architecture with CSS Anchor Positioning and
+      a JS hybrid fallback — across every pattern MatTooltip struggles with.
+    </p>
+  </header>
+
+  <div class="playground-grid">
+
+    <section class="test-card full-width-card">
+      <h2>1. Dense grid — singleton glide</h2>
+      <p>
+        Sweep the pointer fast. The tooltip <em>glides</em> — it never restarts
+        the enter animation mid-sweep because a single DOM node is repositioned,
+        not destroyed and recreated. This is the core MatTooltip bug we fix.
+      </p>
+      <div class="dense-grid">
+        @for (item of stressCells; track item) {
+        <div class="grid-cell" [ngTooltip]="'Cell ' + item + ' — singleton, no restart'"
+          [ngTooltipPlacement]="item <= 8 ? 'top' : 'bottom'">
+          {{ item }}
+        </div>
+        }
+      </div>
+    </section>
+
+    <section class="test-card">
+      <h2>2. Standard actions</h2>
+      <p>
+        Block-level <code>mat-button</code> / <code>mat-raised-button</code>.
+        CSS anchor mode — no scroll container, no transform.
+      </p>
+      <div class="action-row">
+        <button mat-raised-button color="primary" [ngTooltip]="'Save your current progress'" ngTooltipPlacement="top">
+          <mat-icon>save</mat-icon> Save
+        </button>
+        <button mat-stroked-button [ngTooltip]="'Duplicate this document'" ngTooltipPlacement="top">
+          <mat-icon>content_copy</mat-icon> Clone
+        </button>
+        <button mat-stroked-button color="warn" [ngTooltip]="'Permanently delete this item — cannot be undone'"
+          ngTooltipPlacement="top">
+          <mat-icon>delete_outline</mat-icon> Delete
+        </button>
+      </div>
+    </section>
+
+    <section class="test-card">
+      <h2>3. Inline elements</h2>
+      <p>
+        Tooltips on inline <code>&lt;span&gt;</code> and
+        <code>&lt;mat-icon&gt;</code> — tooltip must centre on the anchor,
+        not break text flow.
+      </p>
+      <div class="inline-text">
+        Anchor positioning lets you tether a
+        <span class="text-highlight" [ngTooltip]="'The element with anchor-name set — any HTML element qualifies'"
+          ngTooltipPlacement="top">anchor element</span>
+        to a
+        <span class="text-highlight"
+          [ngTooltip]="'The element with position-anchor + position-area — lives in the top layer'"
+          ngTooltipPlacement="top">positioned element</span>
+        using only CSS. You can even annotate icons
+        <mat-icon class="inline-icon" [ngTooltip]="'Help and information — inline mat-icon as anchor'"
+          ngTooltipPlacement="top">info</mat-icon>
+        mid-sentence, or decorate
+        <code class="code-tip"
+          [ngTooltip]="'position-area: top span-all — place the tooltip above the full width of the anchor'"
+          ngTooltipPlacement="bottom">position-area</code>
+        tokens inline.
+      </div>
+    </section>
+
+    <section class="test-card">
+      <h2>4. Scroll container</h2>
+      <p>
+        The container has <code>overflow-y: auto</code> — CSS anchor positioning
+        breaks here, so JS hybrid mode activates. The tooltip tracks the button
+        live while scrolling, then <strong>vanishes</strong> the instant the
+        button leaves the visible area. Scroll back — it reappears.
+      </p>
+      <div class="scroll-container">
+        <div class="scroll-content">
+          <button mat-raised-button color="primary"
+            [ngTooltip]="'Top anchor — tooltip above, disappears when scrolled out'" ngTooltipPlacement="top">
+            <mat-icon>arrow_upward</mat-icon> Top anchor
+          </button>
+          <div class="scroll-spacer">
+            <mat-icon class="spacer-icon">keyboard_double_arrow_down</mat-icon>
+            Keep scrolling…
+          </div>
+          <button mat-stroked-button [ngTooltip]="'Middle anchor — tooltip to the right, tracks live'"
+            ngTooltipPlacement="right">
+            <mat-icon>drag_handle</mat-icon> Middle anchor
+          </button>
+          <div class="scroll-spacer">
+            <mat-icon class="spacer-icon">keyboard_double_arrow_down</mat-icon>
+            Almost there…
+          </div>
+          <button mat-raised-button color="warn"
+            [ngTooltip]="'Bottom anchor — prefers below but flips above when clipped'" ngTooltipPlacement="bottom">
+            <mat-icon>arrow_downward</mat-icon> Bottom anchor
+          </button>
+          <div class="scroll-pad"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="test-card">
+      <h2>5. Transformed ancestor</h2>
+      <p>
+        <code>transform: translateZ(0)</code> on the container creates a new
+        CSS containing block, silently breaking CSS anchor positioning.
+        JS mode detects this and takes over automatically.
+      </p>
+      <div class="transformed-parent">
+        <div class="action-row">
+          <button mat-stroked-button [ngTooltip]="'Inside a transformed ancestor — JS mode activates'"
+            ngTooltipPlacement="top">
+            <mat-icon>transform</mat-icon> Transformed
+          </button>
+          <button mat-stroked-button [ngTooltip]="'Right placement, inside GPU layer — still works'"
+            ngTooltipPlacement="right">
+            Right
+          </button>
+          <button mat-raised-button color="primary"
+            [ngTooltip]="'Long text tooltip: the auto-flip logic still clamps to viewport here'"
+            ngTooltipPlacement="bottom">
+            Flip test
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="test-card">
+      <h2>6. Icon button row</h2>
+      <p>
+        The same pattern as your toolbar actions. Small anchors, tightly packed —
+        tests horizontal centering on narrow targets.
+      </p>
+      <div class="icon-row">
+        <button mat-icon-button [ngTooltip]="'Edit item'" ngTooltipPlacement="top" aria-label="Edit">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button [ngTooltip]="'Share with team'" ngTooltipPlacement="top" aria-label="Share">
+          <mat-icon>share</mat-icon>
+        </button>
+        <button mat-icon-button [ngTooltip]="'Download as PDF'" ngTooltipPlacement="top" aria-label="Download">
+          <mat-icon>download</mat-icon>
+        </button>
+        <button mat-icon-button [ngTooltip]="'Print document'" ngTooltipPlacement="top" aria-label="Print">
+          <mat-icon>print</mat-icon>
+        </button>
+        <button mat-icon-button [ngTooltip]="'Bookmark this page'" ngTooltipPlacement="top" aria-label="Bookmark">
+          <mat-icon>bookmark_border</mat-icon>
+        </button>
+        <button mat-icon-button [ngTooltip]="'More options'" ngTooltipPlacement="top" aria-label="More">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+      </div>
+    </section>
+
+    <section class="test-card">
+      <h2>7. Delay variants</h2>
+      <p>
+        Show delay prevents tooltip flicker on quick passes.
+        Hide delay lets the pointer reach a clickable tooltip without it closing.
+      </p>
+      <div class="action-row" style="flex-wrap: wrap; gap: 0.5rem;">
+        <button mat-stroked-button [ngTooltip]="'Instant — 0 ms show delay'" ngTooltipPlacement="top"
+          [ngTooltipDelay]="0">
+          0 ms
+        </button>
+        <button mat-stroked-button [ngTooltip]="'Shows after 300 ms — filters accidental hovers'"
+          ngTooltipPlacement="top" [ngTooltipDelay]="300">
+          300 ms show
+        </button>
+        <button mat-stroked-button [ngTooltip]="'Shows after 600 ms — deliberate hover only'" ngTooltipPlacement="top"
+          [ngTooltipDelay]="600">
+          600 ms show
+        </button>
+        <button mat-stroked-button [ngTooltip]="'Long hide delay: 500 ms — pointer can reach this tooltip'"
+          ngTooltipPlacement="top" [ngTooltipHideDelay]="500">
+          500 ms hide
+        </button>
+        <button mat-raised-button color="primary" [ngTooltip]="'Both delays: 300 ms show + 400 ms hide'"
+          ngTooltipPlacement="right" [ngTooltipDelay]="300" [ngTooltipHideDelay]="400">
+          Both
+        </button>
+      </div>
+    </section>
+
+    <section class="test-card">
+      <h2>8. All four placements</h2>
+      <p>
+        Explicit placement on each button. The auto-flip still applies if a
+        chosen side runs out of viewport space.
+      </p>
+      <div class="placement-grid">
+        <div></div>
+        <div class="placement-cell">
+          <button mat-stroked-button [ngTooltip]="'Placement: top'" ngTooltipPlacement="top">Top</button>
+        </div>
+        <div></div>
+
+        <div class="placement-cell">
+          <button mat-stroked-button [ngTooltip]="'Placement: left'" ngTooltipPlacement="left">Left</button>
+        </div>
+        <div class="placement-cell placement-center">
+          <mat-icon style="color: var(--mat-sys-outline)">radio_button_unchecked</mat-icon>
+        </div>
+        <div class="placement-cell">
+          <button mat-stroked-button [ngTooltip]="'Placement: right'" ngTooltipPlacement="right">Right</button>
+        </div>
+
+        <div></div>
+        <div class="placement-cell">
+          <button mat-stroked-button [ngTooltip]="'Placement: bottom'" ngTooltipPlacement="bottom">Bottom</button>
+        </div>
+        <div></div>
+      </div>
+    </section>
+  </div>
+</main>
