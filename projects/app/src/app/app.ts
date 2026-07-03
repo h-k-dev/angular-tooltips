@@ -17,7 +17,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { Dialog } from './dialog/dialog';
 
 // Angular Tooltips
-import { AngularTooltip } from '../../../angular-tooltips/src/public-api';
+import { HkTooltip } from '../../../angular-tooltips/src/public-api';
 
 @Component({
   selector: '[app-root]',
@@ -29,7 +29,7 @@ import { AngularTooltip } from '../../../angular-tooltips/src/public-api';
     MatRippleModule,
 
     // Angular Tooltips
-    AngularTooltip,
+    HkTooltip,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',

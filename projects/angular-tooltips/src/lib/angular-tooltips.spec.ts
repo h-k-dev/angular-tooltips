@@ -2,21 +2,21 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
-import { AngularTooltip } from './angular-tooltips';
+import { HkTooltip } from './angular-tooltips';
 
 @Component({
-  imports: [AngularTooltip],
-  template: `<button ngTooltip="Hello">Hover me</button>`,
+  imports: [HkTooltip],
+  template: `<button hkTooltip="Hello">Hover me</button>`,
 })
 class Host {}
 
-describe('AngularTooltip', () => {
+describe('HkTooltip', () => {
   it('should create', async () => {
     const fixture = TestBed.createComponent(Host);
     await fixture.whenStable();
 
-    const directive = fixture.debugElement.query(By.directive(AngularTooltip));
+    const directive = fixture.debugElement.query(By.directive(HkTooltip));
     expect(directive).toBeTruthy();
-    expect(directive.injector.get(AngularTooltip).content()).toBe('Hello');
+    expect(directive.injector.get(HkTooltip).content()).toBe('Hello');
   });
 });

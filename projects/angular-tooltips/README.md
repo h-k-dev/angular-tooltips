@@ -38,19 +38,19 @@ Import the standalone directive and attach it to anything:
 
 ```ts
 import { Component } from '@angular/core';
-import { AngularTooltip } from '@h-k-dev/angular-tooltips';
+import { HkTooltip } from '@h-k-dev/angular-tooltips';
 
 @Component({
   selector: 'app-demo',
-  imports: [AngularTooltip],
+  imports: [HkTooltip],
   template: `
-    <button [ngTooltip]="'Save your progress'">Save</button>
+    <button [hkTooltip]="'Save your progress'">Save</button>
 
-    <button ngTooltip="Deletes immediately" ngTooltipPlacement="right" [ngTooltipDelay]="300">
+    <button hkTooltip="Deletes immediately" hkTooltipPlacement="right" [hkTooltipDelay]="300">
       Delete
     </button>
 
-    <a href="/docs" ngTooltip="Opens the documentation">Docs</a>
+    <a href="/docs" hkTooltip="Opens the documentation">Docs</a>
   `,
 })
 export class Demo {}
@@ -58,16 +58,16 @@ export class Demo {}
 
 ## API
 
-### `[ngTooltip]` directive
+### `[hkTooltip]` directive
 
 | Input                | Type                                     | Default | Description                                     |
 | -------------------- | ---------------------------------------- | ------- | ----------------------------------------------- |
-| `ngTooltip`          | `string` (required)                      | —       | Tooltip text.                                   |
-| `ngTooltipPlacement` | `'top' \| 'bottom' \| 'left' \| 'right'` | `'top'` | Preferred side; auto-flips when space runs out. |
-| `ngTooltipDelay`     | `number` (ms)                            | `0`     | Delay before showing.                           |
-| `ngTooltipHideDelay` | `number` (ms)                            | `80`    | Delay before hiding.                            |
+| `hkTooltip`          | `string` (required)                      | —       | Tooltip text.                                   |
+| `hkTooltipPlacement` | `'top' \| 'bottom' \| 'left' \| 'right'` | `'top'` | Preferred side; auto-flips when space runs out. |
+| `hkTooltipDelay`     | `number` (ms)                            | `0`     | Delay before showing.                           |
+| `hkTooltipHideDelay` | `number` (ms)                            | `80`    | Delay before hiding.                            |
 
-### `[ngTooltipRoot]` directive
+### `[hkTooltipRoot]` directive
 
 Optional. Scopes the event delegation to a subtree (for example a virtualized grid) instead of
 `document.body`.

@@ -244,14 +244,14 @@ export class TooltipsManager {
   }
 }
 
-// ─── ngTooltipRoot directive ──────────────────────────────────────────────────
+// ─── hkTooltipRoot directive ──────────────────────────────────────────────────
 // Unchanged — scopes delegation to a subtree, e.g. a virtualized grid.
 
 @Directive({
-  selector: '[ngTooltipRoot]',
+  selector: '[hkTooltipRoot]',
   standalone: true,
 })
-export class NgTooltipRoot implements OnInit, OnDestroy {
+export class HkTooltipRoot implements OnInit, OnDestroy {
   readonly #manager = inject(TooltipsManager);
   readonly #el = inject(ElementRef<Element>);
 
@@ -263,7 +263,7 @@ export class NgTooltipRoot implements OnInit, OnDestroy {
   }
 }
 
-// ─── AngularTooltip directive ──────────────────────────────────────────────────
+// ─── HkTooltip directive ──────────────────────────────────────────────────
 // Trigger selection, per host element:
 //
 //   <a href …>  + Interest Invokers supported
@@ -280,7 +280,7 @@ export class NgTooltipRoot implements OnInit, OnDestroy {
 let _uid = 0;
 
 @Directive({
-  selector: '[ngTooltip]',
+  selector: '[hkTooltip]',
   standalone: true,
   host: {
     '[style.anchor-name]': 'supported ? anchorName : null',
@@ -302,14 +302,14 @@ let _uid = 0;
     '[attr.data-tooltip-hide-delay]': 'supported && !useInterest ? hideDelay() : null',
   },
 })
-export class AngularTooltip {
+export class HkTooltip {
   readonly #manager = inject(TooltipsManager);
   readonly #hostEl = inject(ElementRef<HTMLElement>).nativeElement;
 
-  content = input.required<string>({ alias: 'ngTooltip' });
-  placement = input<TooltipPlacement>('top', { alias: 'ngTooltipPlacement' });
-  showDelay = input<number>(0, { alias: 'ngTooltipDelay' });
-  hideDelay = input<number>(80, { alias: 'ngTooltipHideDelay' });
+  content = input.required<string>({ alias: 'hkTooltip' });
+  placement = input<TooltipPlacement>('top', { alias: 'hkTooltipPlacement' });
+  showDelay = input<number>(0, { alias: 'hkTooltipDelay' });
+  hideDelay = input<number>(80, { alias: 'hkTooltipHideDelay' });
 
   protected readonly supported = CSS_ANCHOR_SUPPORTED;
   protected readonly tooltipId = TOOLTIP_ID;
@@ -458,7 +458,7 @@ const TOOLTIP_CSS = `
 }
 
 /* ── Preferred side + built-in flip fallback ─────────────────────────────
-   Set by JS from [ngTooltipPlacement]. The browser does all overlap
+   Set by JS from [hkTooltipPlacement]. The browser does all overlap
    detection; flip-block / flip-inline are queryable from the tail below.
    Entrance direction follows the PREFERRED side (an element can't run an
    anchored() query against itself — same as the reference example, where

@@ -1,7 +1,7 @@
 <header class="dialog-header">
   <h2 mat-dialog-title>Sign in</h2>
   <button mat-icon-button mat-dialog-close class="dialog-header__close" aria-label="Close dialog"
-    [ngTooltip]="'Close without signing in'" ngTooltipPlacement="left">
+    [hkTooltip]="'Close without signing in'" hkTooltipPlacement="left">
     <mat-icon>close</mat-icon>
   </button>
 </header>
@@ -17,20 +17,20 @@
   <section class="direction-group">
     <h3 class="direction-group__title">{{ placement }}</h3>
     <div class="direction-group__row">
-      <button mat-stroked-button [ngTooltip]="'<button> — placement: ' + placement"
-        [ngTooltipPlacement]="placement">
+      <button mat-stroked-button [hkTooltip]="'<button> — placement: ' + placement"
+        [hkTooltipPlacement]="placement">
         Button
       </button>
       <a class="demo-link" href="#" (click)="$event.preventDefault()"
-        [ngTooltip]="'<a href> — placement: ' + placement" [ngTooltipPlacement]="placement">
+        [hkTooltip]="'<a href> — placement: ' + placement" [hkTooltipPlacement]="placement">
         Link
       </a>
-      <span class="demo-span" tabindex="0" [ngTooltip]="'<span> — placement: ' + placement"
-        [ngTooltipPlacement]="placement">
+      <span class="demo-span" tabindex="0" [hkTooltip]="'<span> — placement: ' + placement"
+        [hkTooltipPlacement]="placement">
         Span
       </span>
-      <div class="demo-div" tabindex="0" [ngTooltip]="'<div> — placement: ' + placement"
-        [ngTooltipPlacement]="placement">
+      <div class="demo-div" tabindex="0" [hkTooltip]="'<div> — placement: ' + placement"
+        [hkTooltipPlacement]="placement">
         Div
       </div>
     </div>
@@ -39,11 +39,11 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button mat-dialog-close [ngTooltip]="'Dismiss the dialog'" ngTooltipPlacement="top">
+  <button mat-button mat-dialog-close [hkTooltip]="'Dismiss the dialog'" hkTooltipPlacement="top">
     Cancel
   </button>
-  <button mat-flat-button mat-dialog-close [ngTooltip]="'Pretend to sign in — this is only a demo'"
-    ngTooltipPlacement="top">
+  <button mat-flat-button mat-dialog-close [hkTooltip]="'Pretend to sign in — this is only a demo'"
+    hkTooltipPlacement="top">
     <mat-icon>login</mat-icon> Sign in
   </button>
 </mat-dialog-actions>

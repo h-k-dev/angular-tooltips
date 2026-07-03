@@ -3,7 +3,9 @@
 :host {
   display: flex;
   flex-direction: column;
-  height: 100svh;
+  // min-height (not height) so the host grows with the content and the
+  // document root owns the scrolling — no nested scroll viewport.
+  min-height: 100svh;
   width: 100%;
 
   @include mat.toolbar-overrides(
@@ -36,9 +38,6 @@ main {
   margin-inline: auto;
   padding: 16px;
   flex: 1;
-  // The host is capped at 100svh, so <main> is the scroll viewport —
-  // the toolbar stays put while the playground scrolls.
-  overflow-y: auto;
   width: 100%;
   box-sizing: border-box;
 }

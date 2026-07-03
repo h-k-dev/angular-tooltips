@@ -2,11 +2,11 @@ import { Component } from '@angular/core';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { AngularTooltip, TooltipPlacement } from '../../../../angular-tooltips/src/public-api';
+import { HkTooltip, TooltipPlacement } from '../../../../angular-tooltips/src/public-api';
 
 @Component({
   selector: 'login-dialog',
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, AngularTooltip],
+  imports: [MatDialogModule, MatButtonModule, MatIconModule, HkTooltip],
   templateUrl: './dialog.html',
   styleUrl: './dialog.scss',
 })
