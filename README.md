@@ -4,6 +4,13 @@
 [![CI/CD](https://github.com/h-k-dev/angular-tooltips/actions/workflows/ci.yml/badge.svg)](https://github.com/h-k-dev/angular-tooltips/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+> [!WARNING]
+> **Experimental — Chrome only for now.** This library is built on bleeding-edge platform
+> features (CSS Anchor Positioning, `position-visibility`, anchored container queries, and
+> Interest Invokers) that are currently only fully supported in Chrome and other Chromium-based
+> browsers. Everywhere else the directive degrades to the native `title` attribute. Expect
+> breaking changes while the underlying specs and this API settle.
+
 Modern, lightweight tooltips for Angular. One singleton popover element, positioned entirely by
 **CSS Anchor Positioning** — no overlay module, no scroll listeners, no per-trigger DOM.
 
