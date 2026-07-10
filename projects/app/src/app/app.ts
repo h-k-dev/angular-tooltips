@@ -17,7 +17,12 @@ import { MatDialog } from '@angular/material/dialog';
 import { Dialog } from './dialog/dialog';
 
 // Angular Tooltips
-import { HkTooltip } from '../../../angular-tooltips/src/public-api';
+import {
+  HkTooltip,
+  JSTooltips,
+  supportsAnchorPositioning,
+} from '../../../angular-tooltips/src/public-api';
+import { UserCard } from './user-card/user-card';
 
 @Component({
   selector: '[app-root]',
@@ -30,6 +35,8 @@ import { HkTooltip } from '../../../angular-tooltips/src/public-api';
 
     // Angular Tooltips
     HkTooltip,
+    JSTooltips,
+    UserCard,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
@@ -58,6 +65,10 @@ export class App {
   }
 
   stressCells = Array.from({ length: 100 }, (_, i) => i + 1);
+
+  // Strict engine split: [hkTooltip] throws without CSS Anchor Positioning,
+  // [hkJsTooltip] throws with it — so templates branch on this flag.
+  protected readonly anchorSupported = supportsAnchorPositioning();
 
   // Mirrors the public theming API in the library's injected stylesheet:
   // --tt-* → Material tooltip token → Material system token → default.

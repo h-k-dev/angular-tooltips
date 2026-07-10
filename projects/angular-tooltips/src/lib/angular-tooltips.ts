@@ -4,6 +4,10 @@ import {
   Directive,
   input,
   ElementRef,
+  ApplicationRef,
+  DestroyRef,
+  TemplateRef,
+  EmbeddedViewRef,
   DOCUMENT,
   OnDestroy,
   OnInit,
@@ -13,15 +17,59 @@ import {
 
 export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
 
-const TOOLTIP_ID = 'modern-singleton-tooltip';
+/** Which positioning engine a trigger directive drives. */
+export type TooltipMethod = 'anchor' | 'js';
 
-const ATTR_TOOLTIP = 'data-tooltip';
-const ATTR_PLACEMENT = 'data-tooltip-placement';
-const ATTR_DELAY = 'data-tooltip-delay';
-const ATTR_HIDE_DELAY = 'data-tooltip-hide-delay';
+/**
+ * Template context for rich tooltip content. The implicit `let` variable
+ * binds to the trigger's `[hkTooltipData]` / `[hkJsTooltipData]` input.
+ */
+export interface HkTooltipContext<T = unknown> {
+  $implicit: T;
+}
+
+export type HkTooltipContent = string | TemplateRef<HkTooltipContext>;
+
+/**
+ * The contract every trigger directive fulfils towards the TooltipsManager.
+ * The manager is the ONLY owner of the popover element, its content and the
+ * positioning; directives are thin registrations that expose their signals.
+ */
+export interface TooltipTrigger {
+  readonly anchorId: string;
+  readonly hostEl: HTMLElement;
+  readonly method: TooltipMethod;
+  readonly content: () => HkTooltipContent;
+  readonly data: () => unknown;
+  readonly placement: () => TooltipPlacement;
+  readonly showDelay: () => number;
+  readonly hideDelay: () => number;
+}
+
+/**
+ * Feature check the two directives split on: `[hkTooltip]` requires it and
+ * throws without it; `[hkJsTooltip]` refuses to run with it. Use it to
+ * branch your own templates (`@if (supportsAnchorPositioning()) { … }`).
+ * Deliberately not cached so tests can stub `CSS.supports`.
+ */
+export function supportsAnchorPositioning(): boolean {
+  return typeof CSS !== 'undefined' && !!CSS.supports?.('anchor-name', '--a');
+}
+
+/** Singleton popover element id — also the `interestfor` target id. */
+export const TOOLTIP_ID = 'hk-tooltip';
+
+const CLASS_BASE = 'hk-tooltip';
+const CLASS_ANCHOR = 'hk-tooltip--anchor';
+const CLASS_JS = 'hk-tooltip--js';
+
+/**
+ * The only metadata that lives on the host element. Everything else
+ * (content, placement, delays) is read live off the registered directive —
+ * attributes can't carry a TemplateRef, and signal values shouldn't need a
+ * DOM round-trip.
+ */
 const ATTR_ANCHOR_ID = 'data-tooltip-id';
-
-const CSS_ANCHOR_SUPPORTED = typeof CSS !== 'undefined' && CSS.supports?.('anchor-name', '--a');
 
 /**
  * Interest Invokers (`interestfor`) feature detection. The reflected IDL
@@ -31,19 +79,47 @@ const CSS_ANCHOR_SUPPORTED = typeof CSS !== 'undefined' && CSS.supports?.('ancho
 const INTEREST_FOR_SUPPORTED =
   typeof HTMLAnchorElement !== 'undefined' && 'interestForElement' in HTMLAnchorElement.prototype;
 
+let _uid = 0;
+
+/** Internal: unique per-trigger id shared by both directives. */
+export function nextTooltipAnchorId(): string {
+  return `tt-${(++_uid).toString(36)}`;
+}
+
+const OPPOSITE: Record<TooltipPlacement, TooltipPlacement> = {
+  top: 'bottom',
+  bottom: 'top',
+  left: 'right',
+  right: 'left',
+};
+
 // ─── TooltipsManager ─────────────────────────────────────────────────────────
-// Two trigger paths share one singleton popover:
+// The service exclusively manages the singleton popover element, its content
+// (string fast path / lazily stamped embedded views) and show/hide state.
+// Trigger directives only register themselves; the async content cache is the
+// HkTooltipCache service next door.
 //
-//  1. `interestfor` path — used for <a href> hosts in supporting browsers.
-//     The BROWSER owns showing/hiding, delays (via CSS interest-delay-*),
-//     keyboard interest, and touch long-press. The only JS left is the
-//     `interest` event listener that writes text + position-anchor before
-//     the popover opens.
+// Trigger paths sharing the one popover:
 //
-//  2. JS-delegation path — everything else (buttons, spans, icons…).
-//     Same as before: delegated hover/focus, timers, showPopover().
+//  1. `interestfor` path — <a href> hosts of the anchor directive in
+//     supporting browsers. The BROWSER owns showing/hiding, delays (via CSS
+//     interest-delay-*), keyboard interest, and touch long-press. The only
+//     JS left is the `interest` event listener that renders content +
+//     position-anchor before the popover opens.
 //
-// Positioning, flipping, tail direction, and clip-hiding are all CSS.
+//  2. JS-delegation path — every other trigger of either directive:
+//     delegated hover/focus listeners, timers, showPopover().
+//
+// Positioning is per-method:
+//   'anchor' → 100% CSS (position-anchor, position-area, position-try
+//              fallbacks, anchored container queries for the tail).
+//   'js'     → tippy-style math: rects + flip + clamp, re-run on
+//              scroll/resize while open, resolved side in [data-placement].
+//
+// Both paths resolve the trigger directive from a registry by anchor id,
+// then read content/placement/delays live off its signals. String content
+// stays a bare textContent write; TemplateRef content is stamped as an
+// embedded view — created lazily on show, destroyed on hide/swap.
 
 @Injectable({ providedIn: 'root' })
 export class TooltipsManager {
@@ -52,52 +128,54 @@ export class TooltipsManager {
   #showTimer: ReturnType<typeof setTimeout> | null = null;
   #hideTimer: ReturnType<typeof setTimeout> | null = null;
   #activeId: string | null = null;
+  #activeView: EmbeddedViewRef<HkTooltipContext> | null = null;
+  #stopJsTracking: (() => void) | null = null;
 
   #delegationRoots = new Map<Element, () => void>();
+  #registry = new Map<string, TooltipTrigger>();
 
   readonly #doc = inject(DOCUMENT);
+  readonly #appRef = inject(ApplicationRef);
 
   // ── Public API ─────────────────────────────────────────────────────────────
+
+  /** Every trigger directive registers on construction and unregisters on destroy. */
+  register(dir: TooltipTrigger): void {
+    this.#registry.set(dir.anchorId, dir);
+    this.ensureBodyDelegation();
+  }
+
+  unregister(dir: TooltipTrigger): void {
+    this.#registry.delete(dir.anchorId);
+    if (this.#activeId === dir.anchorId) this.#hide();
+  }
+
   registerRoot(root: Element): void {
     if (this.#delegationRoots.has(root)) return;
     this.#ensureInit();
 
     const over = (e: MouseEvent) => {
-      const target = (e.target as Element).closest(`[${ATTR_TOOLTIP}]`) as HTMLElement | null;
-      if (!target) return;
-      // interestfor elements are the browser's job — don't double-trigger.
-      if (target.hasAttribute('interestfor')) return;
-      const text = target.getAttribute(ATTR_TOOLTIP) ?? '';
-      if (!text) return;
-      const placement = (target.getAttribute(ATTR_PLACEMENT) ?? 'top') as TooltipPlacement;
-      const delay = Number(target.getAttribute(ATTR_DELAY) ?? '0');
-      const id = target.getAttribute(ATTR_ANCHOR_ID) ?? '';
-      this.#scheduleShow(id, text, placement, delay);
+      const dir = this.#delegatedDir(e.target as Element);
+      if (dir) this.#scheduleShow(dir, dir.showDelay());
     };
 
     const out = (e: MouseEvent) => {
-      const src = (e.target as Element).closest(`[${ATTR_TOOLTIP}]`);
+      const src = (e.target as Element).closest(`[${ATTR_ANCHOR_ID}]`);
       if (src?.hasAttribute('interestfor')) return;
       const related = e.relatedTarget as Element | null;
-      if (related?.closest(`[${ATTR_TOOLTIP}]`)) return;
+      if (related?.closest(`[${ATTR_ANCHOR_ID}]`)) return;
       if (related === this.#tooltipEl || this.#tooltipEl?.contains(related)) return;
-      const hideDelay = Number(src?.getAttribute(ATTR_HIDE_DELAY) ?? '80');
-      this.#scheduleHide(hideDelay);
+      const dir = src ? this.#registry.get(src.getAttribute(ATTR_ANCHOR_ID) ?? '') : undefined;
+      this.#scheduleHide(dir?.hideDelay() ?? 80);
     };
 
     const focus = (e: FocusEvent) => {
-      const target = (e.target as Element).closest(`[${ATTR_TOOLTIP}]`) as HTMLElement | null;
-      if (!target) return;
-      if (target.hasAttribute('interestfor')) return;
-      const text = target.getAttribute(ATTR_TOOLTIP) ?? '';
-      if (!text) return;
-      const placement = (target.getAttribute(ATTR_PLACEMENT) ?? 'top') as TooltipPlacement;
-      const id = target.getAttribute(ATTR_ANCHOR_ID) ?? '';
-      this.#scheduleShow(id, text, placement, 0);
+      const dir = this.#delegatedDir(e.target as Element);
+      if (dir) this.#scheduleShow(dir, 0);
     };
 
     const blur = (e: FocusEvent) => {
-      const src = (e.target as Element).closest?.(`[${ATTR_TOOLTIP}]`);
+      const src = (e.target as Element).closest?.(`[${ATTR_ANCHOR_ID}]`);
       if (src?.hasAttribute('interestfor')) return;
       this.#scheduleHide(80);
     };
@@ -125,47 +203,224 @@ export class TooltipsManager {
   }
 
   /**
-   * Point the singleton at a trigger: three writes, no reads, no math.
-   * Used by both paths — the interest path calls it from the `interest`
-   * event (where the browser then opens the popover itself; the
-   * showPopover() below is a no-op-guard for that case).
+   * Point the singleton at a trigger. Content, placement and anchor come
+   * live off the directive's signals; positioning strategy follows the
+   * trigger's method. Used by both paths — the interest path calls it from
+   * the `interest` event (where the browser then opens the popover itself;
+   * the showPopover() below is a no-op-guard for that case).
    */
-  show(id: string, text: string, placement: TooltipPlacement) {
+  show(dir: TooltipTrigger): void {
+    if (!this.#registry.has(dir.anchorId) || !this.#hasContent(dir)) return;
     this.#ensureInit();
     const el = this.#tooltipEl!;
 
     this.#clearShowTimer();
     this.#clearHideTimer();
 
-    if (this.#activeId === id && el.matches(':popover-open')) return;
-    this.#activeId = id;
+    if (this.#activeId === dir.anchorId && el.matches(':popover-open')) return;
+    this.#activeId = dir.anchorId;
 
-    el.textContent = text;
-    el.style.setProperty('position-anchor', `--${id}`);
-    el.setAttribute('data-placement-pref', placement);
+    this.#render(dir);
+    this.#applyMethod(dir);
 
     if (!el.matches(':popover-open')) el.showPopover();
+
+    // JS engine can only measure once the popover renders.
+    if (dir.method === 'js') this.#trackJs(dir);
+  }
+
+  // ── Positioning ────────────────────────────────────────────────────────────
+
+  /**
+   * Each trigger method injects its own class on the popover so only that
+   * engine's stylesheet rules apply, and clears the other engine's residue.
+   */
+  #applyMethod(dir: TooltipTrigger): void {
+    const el = this.#tooltipEl!;
+    el.classList.toggle(CLASS_ANCHOR, dir.method === 'anchor');
+    el.classList.toggle(CLASS_JS, dir.method === 'js');
+    this.#stopJs();
+
+    if (dir.method === 'anchor') {
+      el.style.removeProperty('left');
+      el.style.removeProperty('top');
+      el.removeAttribute('data-placement');
+      el.style.setProperty('position-anchor', `--${dir.anchorId}`);
+      el.setAttribute('data-placement-pref', dir.placement());
+    } else {
+      el.style.removeProperty('position-anchor');
+      el.removeAttribute('data-placement-pref');
+    }
+  }
+
+  /** JS engine: position now and follow the anchor while open. */
+  #trackJs(dir: TooltipTrigger): void {
+    this.#positionJs(dir);
+    const win = this.#doc.defaultView;
+    if (!win) return;
+    const update = () => this.#positionJs(dir);
+    win.addEventListener('scroll', update, { capture: true, passive: true });
+    win.addEventListener('resize', update, { passive: true });
+    this.#stopJsTracking = () => {
+      win.removeEventListener('scroll', update, { capture: true });
+      win.removeEventListener('resize', update);
+    };
+  }
+
+  #stopJs(): void {
+    this.#stopJsTracking?.();
+    this.#stopJsTracking = null;
+  }
+
+  /**
+   * Tippy-style placement: preferred side, flip to the opposite side when
+   * the viewport runs out, clamp ("shift") along the cross axis. The
+   * RESOLVED side lands in [data-placement] for the tail + animation CSS.
+   */
+  #positionJs(dir: TooltipTrigger): void {
+    const el = this.#tooltipEl!;
+    const win = this.#doc.defaultView;
+    if (!win) return;
+
+    const anchor = dir.hostEl.getBoundingClientRect();
+    const tipW = el.offsetWidth;
+    const tipH = el.offsetHeight;
+    const gap = parseFloat(win.getComputedStyle(el).getPropertyValue('--_tt-gap')) || 8;
+    const pad = 4;
+    const vw = win.innerWidth;
+    const vh = win.innerHeight;
+
+    const room: Record<TooltipPlacement, number> = {
+      top: anchor.top,
+      bottom: vh - anchor.bottom,
+      left: anchor.left,
+      right: vw - anchor.right,
+    };
+    const needs = (side: TooltipPlacement) =>
+      (side === 'top' || side === 'bottom' ? tipH : tipW) + gap + pad;
+
+    let placement = dir.placement();
+    if (room[placement] < needs(placement) && room[OPPOSITE[placement]] >= needs(placement)) {
+      placement = OPPOSITE[placement];
+    }
+
+    let x: number;
+    let y: number;
+    switch (placement) {
+      case 'top':
+        x = anchor.left + anchor.width / 2 - tipW / 2;
+        y = anchor.top - gap - tipH;
+        break;
+      case 'bottom':
+        x = anchor.left + anchor.width / 2 - tipW / 2;
+        y = anchor.bottom + gap;
+        break;
+      case 'left':
+        x = anchor.left - gap - tipW;
+        y = anchor.top + anchor.height / 2 - tipH / 2;
+        break;
+      case 'right':
+        x = anchor.right + gap;
+        y = anchor.top + anchor.height / 2 - tipH / 2;
+        break;
+    }
+    if (placement === 'top' || placement === 'bottom') {
+      x = Math.min(Math.max(x, pad), Math.max(vw - tipW - pad, pad));
+    } else {
+      y = Math.min(Math.max(y, pad), Math.max(vh - tipH - pad, pad));
+    }
+
+    el.style.left = `${Math.round(x)}px`;
+    el.style.top = `${Math.round(y)}px`;
+    el.setAttribute('data-placement', placement);
+  }
+
+  // ── Registry / content helpers ─────────────────────────────────────────────
+
+  /** Delegation helper: nearest registered trigger, unless the browser owns it. */
+  #delegatedDir(target: Element): TooltipTrigger | null {
+    const host = target.closest?.(`[${ATTR_ANCHOR_ID}]`);
+    if (!host || host.hasAttribute('interestfor')) return null;
+    return this.#registry.get(host.getAttribute(ATTR_ANCHOR_ID) ?? '') ?? null;
+  }
+
+  #hasContent(dir: TooltipTrigger): boolean {
+    const content = dir.content();
+    return typeof content === 'string' ? content.length > 0 : content != null;
+  }
+
+  /** Is the pointer or keyboard focus still on this trigger (or the tooltip)? */
+  #isEngaged(dir: TooltipTrigger): boolean {
+    return (
+      dir.hostEl.matches(':hover') ||
+      dir.hostEl.matches(':focus-within') ||
+      (this.#tooltipEl?.matches(':hover') ?? false)
+    );
+  }
+
+  /**
+   * String content stays the fast path: one textContent write, no Angular.
+   * A TemplateRef is stamped as an embedded view — created lazily here on
+   * first show (so a resource() inside it fires only now), attached to
+   * ApplicationRef so its signals keep driving change detection while open,
+   * and rendered synchronously so positioning sees the real size.
+   * `role="tooltip"` only fits plain text; template content is a hovercard,
+   * not a tooltip, in ARIA terms, so the role is dropped while one is active.
+   */
+  #render(dir: TooltipTrigger): void {
+    const el = this.#tooltipEl!;
+    this.#destroyView();
+    const content = dir.content();
+
+    if (typeof content === 'string') {
+      el.setAttribute('role', 'tooltip');
+      el.textContent = content;
+      return;
+    }
+
+    el.removeAttribute('role');
+    el.textContent = '';
+    const view = content.createEmbeddedView({ $implicit: dir.data() });
+    this.#appRef.attachView(view);
+    for (const node of view.rootNodes as Node[]) el.appendChild(node);
+    view.detectChanges();
+    this.#activeView = view;
+  }
+
+  #destroyView(): void {
+    if (!this.#activeView) return;
+    this.#activeView.destroy();
+    this.#activeView = null;
+    // destroy() tears the view down but leaves its root nodes parented here.
+    if (this.#tooltipEl) this.#tooltipEl.textContent = '';
+  }
+
+  #hide(): void {
+    this.#clearShowTimer();
+    this.#clearHideTimer();
+    this.#stopJs();
+    this.#activeId = null;
+    if (this.#tooltipEl?.matches(':popover-open')) this.#tooltipEl.hidePopover();
+    this.#destroyView();
   }
 
   // ── Timer helpers (JS-delegation path only) ────────────────────────────────
 
-  #scheduleShow(id: string, text: string, placement: TooltipPlacement, delay: number) {
+  #scheduleShow(dir: TooltipTrigger, delay: number) {
+    if (!this.#hasContent(dir)) return;
     this.#clearShowTimer();
     this.#clearHideTimer();
     if (delay > 0) {
-      this.#showTimer = setTimeout(() => this.show(id, text, placement), delay);
+      this.#showTimer = setTimeout(() => this.show(dir), delay);
     } else {
-      this.show(id, text, placement);
+      this.show(dir);
     }
   }
 
   #scheduleHide(delay: number) {
     this.#clearShowTimer();
     this.#clearHideTimer();
-    this.#hideTimer = setTimeout(() => {
-      if (this.#tooltipEl?.matches(':popover-open')) this.#tooltipEl.hidePopover();
-      this.#activeId = null;
-    }, delay);
+    this.#hideTimer = setTimeout(() => this.#hide(), delay);
   }
 
   #clearShowTimer() {
@@ -183,42 +438,86 @@ export class TooltipsManager {
   }
 
   // ── Init ───────────────────────────────────────────────────────────────────
+  // No style injection here: the stylesheet ships as a global CSS file
+  // (styles/angular-tooltips.css) imported once by the application.
 
   #ensureInit() {
     if (this.#tooltipEl) return;
-    this.#injectStyles();
 
     const el = this.#doc.createElement('div');
     el.id = TOOLTIP_ID;
+    el.classList.add(CLASS_BASE);
     el.setAttribute('popover', 'manual');
     el.setAttribute('role', 'tooltip');
 
-    // ── interestfor path ─────────────────────────────────────────────────
+    // ── interestfor path (anchor directive on <a href> hosts) ───────────
     // The `interest` event fires ON THE TARGET (this element), with
     // `event.source` = the invoker, BEFORE the browser's default action
-    // opens the popover. That's exactly the hook we need to write the
-    // text and re-point position-anchor at the right trigger.
+    // opens the popover. That's exactly the hook we need to render the
+    // content and re-point position-anchor at the right trigger.
     el.addEventListener('interest', (e: Event) => {
       const src = (e as Event & { source?: Element }).source ?? null;
       if (!(src instanceof HTMLElement)) return;
-      const text = src.getAttribute(ATTR_TOOLTIP) ?? '';
-      if (!text) return;
-      const placement = (src.getAttribute(ATTR_PLACEMENT) ?? 'top') as TooltipPlacement;
-      const id = src.getAttribute(ATTR_ANCHOR_ID) ?? '';
-      this.show(id, text, placement);
+      const dir = this.#registry.get(src.getAttribute(ATTR_ANCHOR_ID) ?? '');
+      if (dir) this.show(dir);
     });
 
-    // Losing interest: the browser hides the popover; we only sync state.
-    // (Interest is sustained while hovering the tooltip itself, so
-    // hover-to-select-text works for free on this path.)
-    el.addEventListener('loseinterest', () => {
-      this.#activeId = null;
-      if (el.matches(':popover-open')) el.hidePopover();
+    // Losing interest: the browser hides the popover; we sync state and
+    // drop any stamped view. (Interest is sustained while hovering the
+    // tooltip itself, so hover-to-select-text — and interacting with rich
+    // template content — works for free on this path.)
+    //
+    // Staleness guard: `loseinterest` fires interest-delay-end AFTER the
+    // pointer left the invoker, so during a fast invoker → other-trigger
+    // handoff it belongs to a PREVIOUS anchor. NEVER cancel it — a
+    // cancelled loseinterest leaves the invoker permanently "interested"
+    // and its next hover fires no interest event at all.
+    el.addEventListener('loseinterest', (e: Event) => {
+      const src = (e as Event & { source?: Element }).source ?? null;
+      const id = src instanceof HTMLElement ? src.getAttribute(ATTR_ANCHOR_ID) : null;
+      const active = this.#activeId !== null ? this.#registry.get(this.#activeId) : undefined;
+
+      // Stale + engaged: do nothing ourselves. The browser will clear its
+      // interest state and hide the popover on its own schedule (sync or a
+      // later task — implementations differ); the beforetoggle guard below
+      // restores it the moment that hide actually executes.
+      if (active && id !== active.anchorId && this.#isEngaged(active)) return;
+      this.#hide();
     });
 
-    // Whatever closed the popover (interest loss, Esc, JS): reset state.
+    // ── Seamless-reopen guard ────────────────────────────────────────────
+    // beforetoggle fires SYNCHRONOUSLY inside every popover hide, no matter
+    // who initiated it or when. Library-initiated hides clear #activeId
+    // before calling hidePopover(), so a hide that arrives here with an
+    // active, still-engaged trigger can only be the browser closing over a
+    // handed-off tooltip (stale interest loss). Reopen one microtask later —
+    // after the hide completes, before the next paint — with the entrance
+    // animation suppressed, so visually the tooltip never left.
+    el.addEventListener('beforetoggle', (e: Event) => {
+      if ((e as ToggleEvent).newState !== 'closed') return;
+      const active = this.#activeId !== null ? this.#registry.get(this.#activeId) : undefined;
+      if (!active || !this.#isEngaged(active)) return;
+      queueMicrotask(() => {
+        if (this.#activeId !== active.anchorId) return;
+        if (el.matches(':popover-open')) return;
+        el.style.animation = 'none';
+        el.showPopover();
+      });
+    });
+
+    // Whatever closed the popover (interest loss, JS): reset state and
+    // drop any stamped view. The open-state guard covers the coalesced
+    // toggle case where the popover was re-opened before this async event
+    // fired — never tear down a view that a newer show() just stamped.
     el.addEventListener('toggle', (e: Event) => {
-      if ((e as ToggleEvent).newState === 'closed') this.#activeId = null;
+      if ((e as ToggleEvent).newState !== 'closed') return;
+      if (el.matches(':popover-open')) return;
+      this.#activeId = null;
+      this.#stopJs();
+      this.#destroyView();
+      // If a seamless reopen suppressed the entrance animation, restore it
+      // now that the popover is genuinely closed (invisible, so no restart).
+      el.style.removeProperty('animation');
     });
 
     // JS-delegation path: hovering the tooltip cancels a pending hide.
@@ -234,18 +533,10 @@ export class TooltipsManager {
 
     this.registerRoot(this.#doc.body);
   }
-
-  #injectStyles() {
-    if (this.#doc.getElementById('modern-tooltip-styles')) return;
-    const s = this.#doc.createElement('style');
-    s.id = 'modern-tooltip-styles';
-    s.textContent = TOOLTIP_CSS;
-    this.#doc.head.appendChild(s);
-  }
 }
 
 // ─── hkTooltipRoot directive ──────────────────────────────────────────────────
-// Unchanged — scopes delegation to a subtree, e.g. a virtualized grid.
+// Scopes delegation to a subtree, e.g. a virtualized grid. Method-agnostic.
 
 @Directive({
   selector: '[hkTooltipRoot]',
@@ -263,7 +554,12 @@ export class HkTooltipRoot implements OnInit, OnDestroy {
   }
 }
 
-// ─── HkTooltip directive ──────────────────────────────────────────────────
+// ─── HkTooltip directive — the complete CSS Anchor Positioning way ──────────
+// Content is a plain string or a TemplateRef (rich, stamped lazily).
+// Requires CSS Anchor Positioning and THROWS at construction without it:
+// use the JS-positioned `hkJsTooltip` directive in those environments (the
+// `supportsAnchorPositioning()` helper is exported for template branching).
+//
 // Trigger selection, per host element:
 //
 //   <a href …>  + Interest Invokers supported
@@ -271,47 +567,40 @@ export class HkTooltipRoot implements OnInit, OnDestroy {
 //       show/hide, hover+focus+long-press semantics, and delays (mapped to
 //       the CSS `interest-delay-start/end` properties from the same inputs).
 //
-//   anything else (or no Interest Invokers support, but Anchor Positioning ok)
-//     → JS-delegation path via data-attributes, exactly as before.
-//
-//   no CSS Anchor Positioning at all
-//     → native `title` attribute.
-
-let _uid = 0;
+//   anything else
+//     → JS-delegation path via the anchor-id attribute + registry
+//       (positioning still 100% CSS anchor).
 
 @Directive({
   selector: '[hkTooltip]',
   standalone: true,
   host: {
-    '[style.anchor-name]': 'supported ? anchorName : null',
-    '[attr.title]': '!supported ? content() : null',
+    '[style.anchor-name]': 'anchorName',
 
-    // Shared metadata — the interest handler reads these off event.source,
-    // the JS delegation reads them off the hovered/focused element.
-    '[attr.data-tooltip]': 'supported ? content() : null',
-    '[attr.data-tooltip-placement]': 'supported ? placement() : null',
-    '[attr.data-tooltip-id]': 'supported ? anchorId : null',
+    // The registry key — both trigger paths resolve the directive from it
+    // and read content/placement/delays live off its signals.
+    '[attr.data-tooltip-id]': 'anchorId',
 
     // interestfor path: browser-native trigger + CSS-native delays.
     '[attr.interestfor]': 'useInterest ? tooltipId : null',
     '[style.interest-delay-start]': 'useInterest ? showDelay() + "ms" : null',
     '[style.interest-delay-end]': 'useInterest ? hideDelay() + "ms" : null',
-
-    // JS path: delays consumed by the manager's timers.
-    '[attr.data-tooltip-delay]': 'supported && !useInterest ? showDelay() : null',
-    '[attr.data-tooltip-hide-delay]': 'supported && !useInterest ? hideDelay() : null',
   },
 })
-export class HkTooltip {
+export class HkTooltip implements TooltipTrigger {
   readonly #manager = inject(TooltipsManager);
-  readonly #hostEl = inject(ElementRef<HTMLElement>).nativeElement;
 
-  content = input.required<string>({ alias: 'hkTooltip' });
+  /** Host element — the manager reads live engagement state (:hover) off it. */
+  readonly hostEl = inject(ElementRef<HTMLElement>).nativeElement;
+
+  readonly method = 'anchor' as const;
+
+  content = input.required<HkTooltipContent>({ alias: 'hkTooltip' });
+  data = input<unknown>(undefined, { alias: 'hkTooltipData' });
   placement = input<TooltipPlacement>('top', { alias: 'hkTooltipPlacement' });
   showDelay = input<number>(0, { alias: 'hkTooltipDelay' });
   hideDelay = input<number>(80, { alias: 'hkTooltipHideDelay' });
 
-  protected readonly supported = CSS_ANCHOR_SUPPORTED;
   protected readonly tooltipId = TOOLTIP_ID;
   protected readonly anchorName: string;
   readonly anchorId: string;
@@ -325,282 +614,25 @@ export class HkTooltip {
    */
   protected get useInterest(): boolean {
     return (
-      this.supported &&
       INTEREST_FOR_SUPPORTED &&
-      this.#hostEl instanceof HTMLAnchorElement &&
-      this.#hostEl.hasAttribute('href')
+      this.hostEl instanceof HTMLAnchorElement &&
+      this.hostEl.hasAttribute('href')
     );
   }
 
   constructor() {
-    this.anchorId = `tt-${(++_uid).toString(36)}`;
+    if (!supportsAnchorPositioning()) {
+      throw new Error(
+        '[hkTooltip] This environment has no CSS Anchor Positioning support. ' +
+          'Use the JS-positioned `hkJsTooltip` directive here instead ' +
+          '(branch with the exported supportsAnchorPositioning() helper).',
+      );
+    }
+
+    this.anchorId = nextTooltipAnchorId();
     this.anchorName = `--${this.anchorId}`;
-    // Always init: creates the singleton + its interest listeners, and
-    // registers body delegation for the JS path.
-    if (this.supported) this.#manager.ensureBodyDelegation();
+    this.#manager.register(this);
+
+    inject(DestroyRef).onDestroy(() => this.#manager.unregister(this));
   }
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-// All positioning, flipping, and tail-direction logic lives here.
-//
-// The tail rework: the tooltip itself is `container-type: anchored`, so its
-// ::before can ask the browser "did a position-try fallback actually fire?"
-// via @container anchored(fallback: flip-block | flip-inline). That replaces
-// the whole @property/--tt-side/style() machinery AND the named
-// @position-try blocks — the built-in flip tactics are queryable directly.
-//
-// Note the container-query rule that shapes this design: an element cannot
-// match a container query against ITSELF, only its descendants and
-// pseudo-elements can. So the flip queries only ever select ::before —
-// which is also why the entrance animation direction is keyed off
-// [data-placement-pref] (the preferred side) rather than the resolved side.
-const TOOLTIP_CSS = `
-/* ── The tooltip ──────────────────────────────────────────────────────────
-   Follows the reference example exactly: one element, one-shot keyframe
-   entrance, no transitions at all. Why this matters for a SINGLETON:
-
-   - A keyframe animation runs once when the element starts rendering
-     (popover open) and then goes inert. Nothing is "live" afterwards,
-     so swapping textContent / anchor / placement while open — or the
-     anchored() query flipping the tail — applies instantly with zero
-     secondary motion. Transitions, by contrast, re-fire on every such
-     change, which is what caused the drifting text and blinking tail.
-
-   - Exit is instant (no allow-discrete fade), so there is never a
-     half-faded ghost whose tail re-evaluates mid-flight.
-
-   - The tail rides along with the entrance translate as one solid unit
-     with the bubble — same as the example. */
-#${TOOLTIP_ID} {
-  /* ── Public theming API ─────────────────────────────────────────────────
-     Every visual knob resolves through a private --_tt-* variable:
-
-       --tt-*  (your theme)  →  --mat-tooltip-*  →  --mat-sys-*  →  default
-
-     Set any --tt-* variable on :root (or any ancestor of <body>) to theme
-     the tooltip; unset variables fall back to the Angular Material tooltip
-     component tokens, then the Material system tokens, then the literal. */
-  --_tt-container-color: var(--tt-container-color,
-                         var(--mat-tooltip-container-color,
-                         var(--mat-sys-inverse-surface, #313033)));
-  --_tt-text-color:      var(--tt-text-color,
-                         var(--mat-tooltip-supporting-text-color,
-                         var(--mat-sys-inverse-on-surface, #f4eff4)));
-  --_tt-border-radius:   var(--tt-border-radius,
-                         var(--mat-tooltip-container-shape,
-                         var(--mat-sys-corner-extra-small, 4px)));
-  --_tt-font-family:     var(--tt-font-family,
-                         var(--mat-tooltip-supporting-text-font,
-                         var(--mat-sys-body-small-font, Roboto, sans-serif)));
-  --_tt-font-size:       var(--tt-font-size,
-                         var(--mat-tooltip-supporting-text-size,
-                         var(--mat-sys-body-small-size, 12px)));
-  --_tt-font-weight:     var(--tt-font-weight,
-                         var(--mat-tooltip-supporting-text-weight,
-                         var(--mat-sys-body-small-weight, 400)));
-  --_tt-line-height:     var(--tt-line-height,
-                         var(--mat-tooltip-supporting-text-line-height,
-                         var(--mat-sys-body-small-line-height, 1.4)));
-  --_tt-letter-spacing:  var(--tt-letter-spacing,
-                         var(--mat-tooltip-supporting-text-tracking,
-                         var(--mat-sys-body-small-tracking, 0.033em)));
-  --_tt-shadow:          var(--tt-shadow, none);
-  --_tt-padding:         var(--tt-padding, 6px 10px);
-  --_tt-max-width:       var(--tt-max-width, 280px);
-  /* Tail size must stay smaller than the gap so it never overlaps the trigger. */
-  --_tt-tail:            var(--tt-tail-size, 6px);
-  --_tt-gap:             var(--tt-gap, 8px);
-  --_tt-enter-duration:  var(--tt-enter-duration, 0.3s);
-  --_tt-fade-duration:   var(--tt-fade-duration, 0.15s);
-  --_tt-slide-distance:  var(--tt-slide-distance, 10px);
-
-  /* Anchored query container: lets ::before query which fallback resolved. */
-  container-type: anchored;
-
-  box-sizing: border-box;
-  border: none;
-  overflow: visible;            /* the tail renders outside the border box */
-
-  padding: var(--_tt-padding);
-  max-width: var(--_tt-max-width);
-  white-space: normal;
-  word-break: break-word;
-  z-index: 9999;
-
-  background: var(--_tt-container-color);
-  color: var(--_tt-text-color);
-  border-radius: var(--_tt-border-radius);
-  box-shadow: var(--_tt-shadow);
-  font-family: var(--_tt-font-family);
-  font-size: var(--_tt-font-size);
-  font-weight: var(--_tt-font-weight);
-  line-height: var(--_tt-line-height);
-  letter-spacing: var(--_tt-letter-spacing);
-
-  position: fixed;
-  inset: auto;
-  margin: var(--_tt-gap);
-
-  /* Hide automatically when the anchor scrolls out of view or is clipped. */
-  position-visibility: anchors-visible;
-
-  /* One-shot entrance, direction set per placement below. Restarts only
-     when the popover re-renders (close → open), never while open.
-     Two layered animations: 
-     1. The directional slide gets the custom linear curve and 0.3s duration 
-        so the "spring/slickness" has time to actually play out.
-     2. The opacity fade gets a quick 0.15s ease-out so it appears quickly 
-        while the motion is still settling into place. */
-  animation:
-    tt-in-up var(--_tt-enter-duration) linear(0, 0.68 24%, 0.86 48%, 0.95 72%, 1),
-    tt-fade  var(--_tt-fade-duration) ease-out;
-}
-
-/* ── Preferred side + built-in flip fallback ─────────────────────────────
-   Set by JS from [hkTooltipPlacement]. The browser does all overlap
-   detection; flip-block / flip-inline are queryable from the tail below.
-   Entrance direction follows the PREFERRED side (an element can't run an
-   anchored() query against itself — same as the reference example, where
-   the element-level flip block never actually matches). */
-
-#${TOOLTIP_ID}[data-placement-pref="top"] {
-  position-area: top;
-  position-try-fallbacks: flip-block;
-  animation-name: tt-in-up, tt-fade;   /* animation-name overrides the full list */
-  transform-origin: bottom;
-}
-#${TOOLTIP_ID}[data-placement-pref="bottom"] {
-  position-area: bottom;
-  position-try-fallbacks: flip-block;
-  animation-name: tt-in-down, tt-fade;
-  transform-origin: top;
-}
-#${TOOLTIP_ID}[data-placement-pref="left"] {
-  position-area: left;
-  position-try-fallbacks: flip-inline;
-  animation-name: tt-in-left, tt-fade;
-  transform-origin: right;
-}
-#${TOOLTIP_ID}[data-placement-pref="right"] {
-  position-area: right;
-  position-try-fallbacks: flip-inline;
-  animation-name: tt-in-right, tt-fade;
-  transform-origin: left;
-}
-
-/* Directional slides — transform only; opacity lives in tt-fade so the
-   two can run on different durations/easings. Custom properties resolve
-   against the animated element, so --_tt-slide-distance works here. */
-@keyframes tt-in-up {
-  from { transform: translateY(var(--_tt-slide-distance)); }
-  to   { transform: translateY(0); }
-}
-@keyframes tt-in-down {
-  from { transform: translateY(calc(-1 * var(--_tt-slide-distance))); }
-  to   { transform: translateY(0); }
-}
-@keyframes tt-in-left {
-  from { transform: translateX(var(--_tt-slide-distance)); }
-  to   { transform: translateX(0); }
-}
-@keyframes tt-in-right {
-  from { transform: translateX(calc(-1 * var(--_tt-slide-distance))); }
-  to   { transform: translateX(0); }
-}
-
-/* Fade starts at 0 for maximum slickness. */
-@keyframes tt-fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-/* ── The tail ─────────────────────────────────────────────────────────────
-   Plain absolutely-positioned border triangle hanging off the tooltip's
-   edge into the gap — no anchor() functions needed for the tail itself.
-   Direction flips via anchored() container queries against the tooltip. */
-
-#${TOOLTIP_ID}::before {
-  content: "";
-  position: absolute;
-  border: var(--_tt-tail) solid transparent;
-}
-
-/* pref=top: tooltip above trigger → tail on bottom edge, pointing down */
-#${TOOLTIP_ID}[data-placement-pref="top"]::before {
-  left: 50%;
-  translate: -50% 0;
-  bottom: calc(-1 * var(--_tt-tail));
-  border-bottom: none;
-  border-top-color: var(--_tt-container-color);
-}
-@container anchored(fallback: flip-block) {
-  #${TOOLTIP_ID}[data-placement-pref="top"]::before {
-    bottom: auto;
-    top: calc(-1 * var(--_tt-tail));
-    border-bottom: var(--_tt-tail) solid var(--_tt-container-color);
-    border-top: none;
-  }
-}
-
-/* pref=bottom: tail on top edge, pointing up */
-#${TOOLTIP_ID}[data-placement-pref="bottom"]::before {
-  left: 50%;
-  translate: -50% 0;
-  top: calc(-1 * var(--_tt-tail));
-  border-top: none;
-  border-bottom-color: var(--_tt-container-color);
-}
-@container anchored(fallback: flip-block) {
-  #${TOOLTIP_ID}[data-placement-pref="bottom"]::before {
-    top: auto;
-    bottom: calc(-1 * var(--_tt-tail));
-    border-top: var(--_tt-tail) solid var(--_tt-container-color);
-    border-bottom: none;
-  }
-}
-
-/* pref=left: tooltip left of trigger → tail on right edge, pointing right */
-#${TOOLTIP_ID}[data-placement-pref="left"]::before {
-  top: 50%;
-  translate: 0 -50%;
-  right: calc(-1 * var(--_tt-tail));
-  border-right: none;
-  border-left-color: var(--_tt-container-color);
-}
-@container anchored(fallback: flip-inline) {
-  #${TOOLTIP_ID}[data-placement-pref="left"]::before {
-    right: auto;
-    left: calc(-1 * var(--_tt-tail));
-    border-right: var(--_tt-tail) solid var(--_tt-container-color);
-    border-left: none;
-  }
-}
-
-/* pref=right: tail on left edge, pointing left */
-#${TOOLTIP_ID}[data-placement-pref="right"]::before {
-  top: 50%;
-  translate: 0 -50%;
-  left: calc(-1 * var(--_tt-tail));
-  border-left: none;
-  border-right-color: var(--_tt-container-color);
-}
-@container anchored(fallback: flip-inline) {
-  #${TOOLTIP_ID}[data-placement-pref="right"]::before {
-    left: auto;
-    right: calc(-1 * var(--_tt-tail));
-    border-left: var(--_tt-tail) solid var(--_tt-container-color);
-    border-right: none;
-  }
-}
-
-/* ── Fallback for browsers without CSS Anchor Positioning ────────────────
-   The directive swaps to the native [title] attribute; the singleton is
-   simply never shown. */
-
-@supports not (anchor-name: --a) {
-  #${TOOLTIP_ID} {
-    display: none;
-  }
-}
-`;

@@ -1,6 +1,7 @@
 {
   "$schema": "../../node_modules/ng-packagr/ng-package.schema.json",
   "dest": "../../dist/angular-tooltips",
+  "assets": ["./styles/angular-tooltips.css"],
   "lib": {
     "entryFile": "src/public-api.ts"
   }

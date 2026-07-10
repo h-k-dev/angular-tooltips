@@ -1,6 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 
+// jsdom has no CSS Anchor Positioning; without this stub every [hkTooltip]
+// in the template would throw at construction (by design — see the library's
+// strict engine split).
+const realCSS = globalThis.CSS;
+beforeAll(() => {
+  (globalThis as { CSS: unknown }).CSS = { supports: () => true };
+});
+afterAll(() => {
+  (globalThis as { CSS: unknown }).CSS = realCSS;
+});
+
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

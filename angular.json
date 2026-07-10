@@ -55,7 +55,10 @@
                 "input": "projects/app/public"
               }
             ],
-            "styles": ["projects/app/src/styles.scss"]
+            "styles": [
+              "projects/angular-tooltips/styles/angular-tooltips.css",
+              "projects/app/src/styles.scss"
+            ]
           },
           "configurations": {
             "production": {

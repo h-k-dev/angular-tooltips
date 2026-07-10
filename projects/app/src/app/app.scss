@@ -211,6 +211,31 @@ main {
   cursor: help;
 }
 
+// Rich-content tooltip templates (stamped into the singleton popover — the
+// nodes keep this component's scoping attribute, so these rules still apply).
+.media-card {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+
+  img,
+  video {
+    // Fixed box so the tooltip doesn't resize when the media arrives.
+    display: block;
+    width: 220px;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 6px;
+    background: color-mix(in srgb, currentColor 15%, transparent);
+  }
+
+  figcaption {
+    max-width: 220px;
+    font-size: 11px;
+    opacity: 0.7;
+  }
+}
+
 // ─── Card 4: Theming variables table ─────────────────────────────────────────
 .var-table-wrap {
   overflow-x: auto;

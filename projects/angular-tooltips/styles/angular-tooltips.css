@@ -1,0 +1,290 @@
+/* ═══ @h-k-dev/angular-tooltips — global stylesheet ═══════════════════════════
+
+   Import ONCE, globally — e.g. in angular.json:
+
+     "styles": ["node_modules/@h-k-dev/angular-tooltips/styles/angular-tooltips.css", …]
+
+   or in your styles.css:
+
+     @import '@h-k-dev/angular-tooltips/styles/angular-tooltips.css';
+
+   The singleton popover element carries:
+
+     .hk-tooltip           base bubble, shared by both engines
+     .hk-tooltip--anchor   CSS Anchor Positioning engine   ([hkTooltip])
+     .hk-tooltip--js       JS positioning engine, à la tippy ([hkJsTooltip])
+
+   The manager toggles the engine class per active trigger; each directive
+   therefore "injects" its own class and only its rules apply.
+
+   ── Why a one-shot keyframe entrance and no transitions (singleton!) ──
+   A keyframe animation runs once when the element starts rendering (popover
+   open) and then goes inert. Nothing is "live" afterwards, so swapping
+   content / anchor / placement while open applies instantly with zero
+   secondary motion. Transitions would re-fire on every such change — the
+   classic drifting-text / blinking-tail artifacts. Exit is instant, so
+   there is never a half-faded ghost re-evaluating its tail mid-flight.     */
+
+/* ── Base bubble (both engines) ─────────────────────────────────────────── */
+.hk-tooltip {
+  /* Public theming API — every visual knob resolves through a private
+     --_tt-* variable:  --tt-* (your theme) → --mat-tooltip-* → --mat-sys-*
+     → default. Set any --tt-* variable on :root (or any ancestor of <body>)
+     to theme the tooltip. */
+  --_tt-container-color: var(--tt-container-color,
+                         var(--mat-tooltip-container-color,
+                         var(--mat-sys-inverse-surface, #313033)));
+  --_tt-text-color:      var(--tt-text-color,
+                         var(--mat-tooltip-supporting-text-color,
+                         var(--mat-sys-inverse-on-surface, #f4eff4)));
+  --_tt-border-radius:   var(--tt-border-radius,
+                         var(--mat-tooltip-container-shape,
+                         var(--mat-sys-corner-extra-small, 4px)));
+  --_tt-font-family:     var(--tt-font-family,
+                         var(--mat-tooltip-supporting-text-font,
+                         var(--mat-sys-body-small-font, Roboto, sans-serif)));
+  --_tt-font-size:       var(--tt-font-size,
+                         var(--mat-tooltip-supporting-text-size,
+                         var(--mat-sys-body-small-size, 12px)));
+  --_tt-font-weight:     var(--tt-font-weight,
+                         var(--mat-tooltip-supporting-text-weight,
+                         var(--mat-sys-body-small-weight, 400)));
+  --_tt-line-height:     var(--tt-line-height,
+                         var(--mat-tooltip-supporting-text-line-height,
+                         var(--mat-sys-body-small-line-height, 1.4)));
+  --_tt-letter-spacing:  var(--tt-letter-spacing,
+                         var(--mat-tooltip-supporting-text-tracking,
+                         var(--mat-sys-body-small-tracking, 0.033em)));
+  --_tt-shadow:          var(--tt-shadow, none);
+  --_tt-padding:         var(--tt-padding, 6px 10px);
+  --_tt-max-width:       var(--tt-max-width, 280px);
+  /* Tail size must stay smaller than the gap so it never overlaps the trigger. */
+  --_tt-tail:            var(--tt-tail-size, 6px);
+  --_tt-gap:             var(--tt-gap, 8px);
+  --_tt-enter-duration:  var(--tt-enter-duration, 0.3s);
+  --_tt-fade-duration:   var(--tt-fade-duration, 0.15s);
+  --_tt-slide-distance:  var(--tt-slide-distance, 10px);
+
+  box-sizing: border-box;
+  border: none;
+  overflow: visible;            /* the tail renders outside the border box */
+
+  padding: var(--_tt-padding);
+  max-width: var(--_tt-max-width);
+  white-space: normal;
+  word-break: break-word;
+  z-index: 9999;
+
+  background: var(--_tt-container-color);
+  color: var(--_tt-text-color);
+  border-radius: var(--_tt-border-radius);
+  box-shadow: var(--_tt-shadow);
+  font-family: var(--_tt-font-family);
+  font-size: var(--_tt-font-size);
+  font-weight: var(--_tt-font-weight);
+  line-height: var(--_tt-line-height);
+  letter-spacing: var(--_tt-letter-spacing);
+
+  position: fixed;
+  inset: auto;
+
+  /* One-shot entrance; direction is set per placement by each engine below.
+     Two layered animations: the directional slide gets the custom linear
+     curve, the opacity fade a quick ease-out — the tooltip appears fast
+     while the motion is still settling. */
+  animation:
+    tt-in-up var(--_tt-enter-duration) linear(0, 0.68 24%, 0.86 48%, 0.95 72%, 1),
+    tt-fade  var(--_tt-fade-duration) ease-out;
+}
+
+/* Tail: plain absolutely-positioned border triangle hanging off the bubble
+   into the gap. Direction is set per engine below. */
+.hk-tooltip::before {
+  content: "";
+  position: absolute;
+  border: var(--_tt-tail) solid transparent;
+}
+
+/* Directional slides — transform only; opacity lives in tt-fade so the two
+   can run on different durations/easings. */
+@keyframes tt-in-up {
+  from { transform: translateY(var(--_tt-slide-distance)); }
+  to   { transform: translateY(0); }
+}
+@keyframes tt-in-down {
+  from { transform: translateY(calc(-1 * var(--_tt-slide-distance))); }
+  to   { transform: translateY(0); }
+}
+@keyframes tt-in-left {
+  from { transform: translateX(var(--_tt-slide-distance)); }
+  to   { transform: translateX(0); }
+}
+@keyframes tt-in-right {
+  from { transform: translateX(calc(-1 * var(--_tt-slide-distance))); }
+  to   { transform: translateX(0); }
+}
+@keyframes tt-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Anchor engine ([hkTooltip]) — the complete CSS Anchor Positioning way ──
+   Placement, viewport flipping, tail direction and hide-when-scrolled-out
+   are ALL browser CSS; JS never reads a rect. The tooltip is an anchored
+   query container so its ::before can ask "did a position-try fallback
+   actually fire?" via @container anchored(fallback: …). An element cannot
+   match a container query against itself — only descendants and pseudos —
+   which is why the flip queries only ever select ::before, and why the
+   entrance direction is keyed off [data-placement-pref] (preferred side)
+   rather than the resolved side. */
+.hk-tooltip--anchor {
+  container-type: anchored;
+  margin: var(--_tt-gap);
+  /* Hide automatically when the anchor scrolls out of view or is clipped. */
+  position-visibility: anchors-visible;
+}
+
+.hk-tooltip--anchor[data-placement-pref="top"] {
+  position-area: top;
+  position-try-fallbacks: flip-block;
+  animation-name: tt-in-up, tt-fade;   /* animation-name overrides the list */
+  transform-origin: bottom;
+}
+.hk-tooltip--anchor[data-placement-pref="bottom"] {
+  position-area: bottom;
+  position-try-fallbacks: flip-block;
+  animation-name: tt-in-down, tt-fade;
+  transform-origin: top;
+}
+.hk-tooltip--anchor[data-placement-pref="left"] {
+  position-area: left;
+  position-try-fallbacks: flip-inline;
+  animation-name: tt-in-left, tt-fade;
+  transform-origin: right;
+}
+.hk-tooltip--anchor[data-placement-pref="right"] {
+  position-area: right;
+  position-try-fallbacks: flip-inline;
+  animation-name: tt-in-right, tt-fade;
+  transform-origin: left;
+}
+
+/* Anchor-engine tails: preferred side, flipped via anchored() queries. */
+.hk-tooltip--anchor[data-placement-pref="top"]::before {
+  left: 50%;
+  translate: -50% 0;
+  bottom: calc(-1 * var(--_tt-tail));
+  border-bottom: none;
+  border-top-color: var(--_tt-container-color);
+}
+@container anchored(fallback: flip-block) {
+  .hk-tooltip--anchor[data-placement-pref="top"]::before {
+    bottom: auto;
+    top: calc(-1 * var(--_tt-tail));
+    border-bottom: var(--_tt-tail) solid var(--_tt-container-color);
+    border-top: none;
+  }
+}
+
+.hk-tooltip--anchor[data-placement-pref="bottom"]::before {
+  left: 50%;
+  translate: -50% 0;
+  top: calc(-1 * var(--_tt-tail));
+  border-top: none;
+  border-bottom-color: var(--_tt-container-color);
+}
+@container anchored(fallback: flip-block) {
+  .hk-tooltip--anchor[data-placement-pref="bottom"]::before {
+    top: auto;
+    bottom: calc(-1 * var(--_tt-tail));
+    border-top: var(--_tt-tail) solid var(--_tt-container-color);
+    border-bottom: none;
+  }
+}
+
+.hk-tooltip--anchor[data-placement-pref="left"]::before {
+  top: 50%;
+  translate: 0 -50%;
+  right: calc(-1 * var(--_tt-tail));
+  border-right: none;
+  border-left-color: var(--_tt-container-color);
+}
+@container anchored(fallback: flip-inline) {
+  .hk-tooltip--anchor[data-placement-pref="left"]::before {
+    right: auto;
+    left: calc(-1 * var(--_tt-tail));
+    border-right: var(--_tt-tail) solid var(--_tt-container-color);
+    border-left: none;
+  }
+}
+
+.hk-tooltip--anchor[data-placement-pref="right"]::before {
+  top: 50%;
+  translate: 0 -50%;
+  left: calc(-1 * var(--_tt-tail));
+  border-left: none;
+  border-right-color: var(--_tt-container-color);
+}
+@container anchored(fallback: flip-inline) {
+  .hk-tooltip--anchor[data-placement-pref="right"]::before {
+    left: auto;
+    right: calc(-1 * var(--_tt-tail));
+    border-left: var(--_tt-tail) solid var(--_tt-container-color);
+    border-right: none;
+  }
+}
+
+/* ── JS engine ([hkJsTooltip]) — tippy-style, works everywhere ─────────────
+   The manager computes left/top from getBoundingClientRect (gap included),
+   flips when the preferred side runs out of viewport, and re-positions on
+   scroll/resize while open. [data-placement] is the RESOLVED side, so tails
+   and entrance direction key off it directly — no container queries. */
+.hk-tooltip--js {
+  margin: 0; /* the gap is baked into the computed coordinates */
+}
+
+.hk-tooltip--js[data-placement="top"] {
+  animation-name: tt-in-up, tt-fade;
+  transform-origin: bottom;
+}
+.hk-tooltip--js[data-placement="bottom"] {
+  animation-name: tt-in-down, tt-fade;
+  transform-origin: top;
+}
+.hk-tooltip--js[data-placement="left"] {
+  animation-name: tt-in-left, tt-fade;
+  transform-origin: right;
+}
+.hk-tooltip--js[data-placement="right"] {
+  animation-name: tt-in-right, tt-fade;
+  transform-origin: left;
+}
+
+.hk-tooltip--js[data-placement="top"]::before {
+  left: 50%;
+  translate: -50% 0;
+  bottom: calc(-1 * var(--_tt-tail));
+  border-bottom: none;
+  border-top-color: var(--_tt-container-color);
+}
+.hk-tooltip--js[data-placement="bottom"]::before {
+  left: 50%;
+  translate: -50% 0;
+  top: calc(-1 * var(--_tt-tail));
+  border-top: none;
+  border-bottom-color: var(--_tt-container-color);
+}
+.hk-tooltip--js[data-placement="left"]::before {
+  top: 50%;
+  translate: 0 -50%;
+  right: calc(-1 * var(--_tt-tail));
+  border-right: none;
+  border-left-color: var(--_tt-container-color);
+}
+.hk-tooltip--js[data-placement="right"]::before {
+  top: 50%;
+  translate: 0 -50%;
+  left: calc(-1 * var(--_tt-tail));
+  border-left: none;
+  border-right-color: var(--_tt-container-color);
+}
