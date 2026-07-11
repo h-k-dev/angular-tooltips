@@ -198,6 +198,25 @@ describe('HkTooltip', () => {
     expect(tooltipEl().textContent).toBe('');
   });
 
+  it('cancels browser interest for triggers without content yet', async () => {
+    @Component({
+      imports: [HkTooltip],
+      template: `<a href="/docs" hkTooltip="">link</a>`,
+    })
+    class EmptyHost {}
+    const fixture = TestBed.createComponent(EmptyHost);
+    await fixture.whenStable();
+
+    const link = (fixture.nativeElement as Element).querySelector('a')!;
+    const e = new Event('interest', { cancelable: true });
+    Object.defineProperty(e, 'source', { value: link });
+    tooltipEl().dispatchEvent(e);
+
+    // The default action would open the popover empty — must be cancelled.
+    expect(e.defaultPrevented).toBe(true);
+    expect(tooltipEl().textContent).toBe('');
+  });
+
   it('destroys the projected view when the trigger is destroyed', async () => {
     const fixture = TestBed.createComponent(TemplateHost);
     await fixture.whenStable();

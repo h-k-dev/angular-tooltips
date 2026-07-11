@@ -1,0 +1,21 @@
+@use '../card-base' as *;
+
+@include card-content;
+
+.placement-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 0.5rem;
+}
+
+.placement-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placement-center {
+  // The center cell is just a visual marker
+  font-size: 1.5rem;
+}

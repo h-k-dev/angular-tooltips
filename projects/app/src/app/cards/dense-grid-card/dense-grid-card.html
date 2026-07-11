@@ -1,0 +1,14 @@
+<h2>Dense grid — singleton glide</h2>
+<p>
+  Sweep the pointer fast. The tooltip <em>glides</em> — it never restarts
+  the enter animation mid-sweep because a single DOM node is repositioned,
+  not destroyed and recreated. This is the core MatTooltip bug we fix.
+</p>
+<div class="dense-grid">
+  @for (item of stressCells; track item) {
+  <div class="grid-cell" [hkTooltip]="'Cell ' + item + ' — singleton, no restart'"
+    [hkTooltipPlacement]="item <= 8 ? 'top' : 'bottom'">
+    {{ item }}
+  </div>
+  }
+</div>

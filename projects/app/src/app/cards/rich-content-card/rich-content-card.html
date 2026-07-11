@@ -1,0 +1,69 @@
+<h2>Rich content — lazy templates</h2>
+<p>
+  Pass an <code>&lt;ng-template&gt;</code> instead of a string — on any element, exactly
+  like string content. The card is stamped lazily on first show — its
+  <code>resource()</code> fires only then — and results are cached app-wide for
+  15&nbsp;s via <code>HkTooltipCache</code>. Hover a name twice: the second show is
+  instant, with the same fetch timestamp. Two triggers for the same user share one
+  request (both <em>&#64;amelia</em> tiles hit one cache entry).
+</p>
+<div class="tag-grid">
+  <button class="tag-item" [hkTooltip]="userCard" [hkTooltipData]="1"
+    [hkTooltipHideDelay]="200">
+    &lt;button&gt; &#64;amelia
+  </button>
+  <a class="tag-item" href="#" (click)="$event.preventDefault()" [hkTooltip]="userCard"
+    [hkTooltipData]="2" [hkTooltipHideDelay]="200" hkTooltipPlacement="bottom">
+    &lt;a&gt; &#64;jonas
+  </a>
+  <span class="tag-item" tabindex="0" [hkTooltip]="userCard" [hkTooltipData]="3"
+    [hkTooltipHideDelay]="200" hkTooltipPlacement="bottom">
+    &lt;span&gt; &#64;priya
+  </span>
+  <div class="tag-item" tabindex="0" [hkTooltip]="userCard" [hkTooltipData]="1"
+    [hkTooltipHideDelay]="200">
+    &lt;div&gt; &#64;amelia
+  </div>
+  <code class="tag-item" tabindex="0" [hkTooltip]="userCard" [hkTooltipData]="2"
+    [hkTooltipHideDelay]="200">
+    &lt;code&gt; &#64;jonas
+  </code>
+  <mat-icon class="tag-item tag-item--icon" tabindex="0" [hkTooltip]="userCard"
+    [hkTooltipData]="3" [hkTooltipHideDelay]="200" hkTooltipPlacement="bottom">
+    person
+  </mat-icon>
+  <span class="tag-item" tabindex="0" [hkTooltip]="photoCard" [hkTooltipHideDelay]="200">
+    <mat-icon>image</mat-icon> image
+  </span>
+  <span class="tag-item" tabindex="0" [hkTooltip]="videoCard" [hkTooltipHideDelay]="200"
+    hkTooltipPlacement="bottom">
+    <mat-icon>play_circle</mat-icon> video
+  </span>
+</div>
+<ng-template #userCard let-userId>
+  <app-user-card [userId]="userId" />
+</ng-template>
+<ng-template #photoCard>
+  <figure class="media-card">
+    <img src="https://picsum.photos/seed/hk-tooltips/440/280" width="220" height="140"
+      alt="Landscape from picsum.photos" />
+    <figcaption>
+      Lazily stamped — this image first downloads on first show.
+    </figcaption>
+  </figure>
+</ng-template>
+<ng-template #videoCard>
+  <figure class="media-card">
+    <video width="220" autoplay [muted]="true" loop playsinline>
+      <source
+        src="https://test-videos.co.uk/vids/bigbuckbunny/webm/vp8/360/Big_Buck_Bunny_360_10s_1MB.webm"
+        type="video/webm" />
+      <source
+        src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
+        type="video/mp4" />
+    </video>
+    <figcaption>
+      Autoplaying video. The view is destroyed on hide, so playback stops.
+    </figcaption>
+  </figure>
+</ng-template>

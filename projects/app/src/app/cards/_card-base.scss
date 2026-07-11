@@ -1,0 +1,138 @@
+// Shared building blocks for the example cards. The card SHELL (border,
+// padding, background, grid spans) lives in app.scss and targets the card
+// host elements via .test-card / .full-width-card; everything inside a card
+// is scoped to that card's component and composed from these mixins.
+
+// Card SHELL, applied by the PAGE that lays the cards out (the class sits on
+// each card's host element, so the page's scoped styles reach it).
+@mixin card-shell {
+  .test-card {
+    display: block;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 12px;
+    padding: 1.5rem;
+    background: var(--mat-sys-surface);
+    // Breathing room above a card when it is jumped to via a fragment link.
+    scroll-margin-top: 16px;
+  }
+
+  .full-width-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@mixin card-grid {
+  .playground-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+@mixin page-header {
+  .page-header {
+    margin-bottom: 2.5rem;
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--mat-sys-on-surface);
+    }
+
+    p {
+      font-size: 1.05rem;
+      color: var(--mat-sys-on-surface-variant);
+      max-width: 65ch;
+      line-height: 1.6;
+    }
+  }
+}
+
+@mixin card-content {
+  h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.4rem;
+    color: var(--mat-sys-on-surface);
+  }
+
+  p {
+    font-size: 0.875rem;
+    color: var(--mat-sys-on-surface-variant);
+    margin: 0 0 1.25rem;
+    line-height: 1.6;
+
+    code {
+      font-size: 0.8rem;
+      background: var(--mat-sys-surface-container-high);
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    em {
+      font-style: italic;
+    }
+
+    strong {
+      font-weight: 600;
+      color: var(--mat-sys-on-surface);
+    }
+  }
+}
+
+@mixin tag-tiles {
+  .tag-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .tag-item {
+    // Neutralise native button/input/a styling so every tag renders as the
+    // same tile — the tag name inside is what identifies it.
+    appearance: none;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px; // comfortable tap target
+    padding: 0.5rem 0.9rem;
+    font: 600 0.85rem/1 monospace;
+    color: var(--mat-sys-on-surface);
+    background: var(--mat-sys-surface-container-low);
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--mat-sys-surface-container);
+    }
+  }
+
+  .tag-item--img {
+    width: 44px;
+    padding: 0.5rem;
+    object-fit: contain;
+  }
+
+  .tag-item--input {
+    width: 7.5rem;
+    cursor: text;
+
+    &::placeholder {
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+
+  .tag-item--icon {
+    width: 44px;
+    padding: 0;
+    color: var(--mat-sys-primary);
+    cursor: help;
+  }
+}

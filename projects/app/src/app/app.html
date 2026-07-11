@@ -1,5 +1,10 @@
 <mat-toolbar>
+  <button mat-icon-button (click)="drawer.toggle()" aria-label="Toggle page navigation">
+    <mat-icon>menu</mat-icon>
+  </button>
+
   <div class="spacer"></div>
+
   <div class="toolbar__actions">
     @if (anchorSupported) {
     <button mat-icon-button (click)="toggleTheme()" [hkTooltip]="'Toggle dark/light mode'">
@@ -9,10 +14,12 @@
       <mat-icon>light_mode</mat-icon>
       }
     </button>
+
     <button mat-flat-button (click)="openLogin()"
       [hkTooltip]="'Open the sign-in dialog — tooltips escape into the top layer'" hkTooltipPlacement="bottom">
       <mat-icon>login</mat-icon> Login
     </button>
+
     } @else {
     <button mat-icon-button (click)="toggleTheme()" [hkJsTooltip]="'Toggle dark/light mode'">
       @if (theme() === 'dark') {
@@ -21,257 +28,35 @@
       <mat-icon>light_mode</mat-icon>
       }
     </button>
+
     <!-- The sign-in dialog demos anchor-engine tooltips internally, so it is
          only reachable where [hkTooltip] can construct. -->
     }
   </div>
 </mat-toolbar>
 
-<main>
-  <header class="page-header">
-    <h1>Modern Tooltip Playground</h1>
-    <p>
-      Testing the singleton-popover architecture with CSS Anchor Positioning and
-      a JS hybrid fallback — across every pattern MatTooltip struggles with.
-    </p>
-  </header>
+<mat-drawer-container class="layout">
+  <mat-drawer #drawer mode="side" [opened]="true" class="layout__aside">
+    <nav class="aside-nav">
+      <a mat-button class="aside-nav__link" routerLink="/" routerLinkActive="aside-nav__link--active"
+        [routerLinkActiveOptions]="{ exact: true }">
+        Home
+      </a>
+      <a mat-button class="aside-nav__link" routerLink="/anchor-tooltips" routerLinkActive="aside-nav__link--active">
+        Anchor Tooltips
+      </a>
+      <a mat-button class="aside-nav__link" routerLink="/js-tooltips" routerLinkActive="aside-nav__link--active">
+        JS Tooltips
+      </a>
+      <a mat-button class="aside-nav__link" routerLink="/examples" routerLinkActive="aside-nav__link--active">
+        Examples
+      </a>
+    </nav>
+  </mat-drawer>
 
-  <div class="playground-grid">
-    @if (anchorSupported) {
-
-    <section class="test-card full-width-card">
-      <h2>1. Dense grid — singleton glide</h2>
-      <p>
-        Sweep the pointer fast. The tooltip <em>glides</em> — it never restarts
-        the enter animation mid-sweep because a single DOM node is repositioned,
-        not destroyed and recreated. This is the core MatTooltip bug we fix.
-      </p>
-      <div class="dense-grid">
-        @for (item of stressCells; track item) {
-        <div class="grid-cell" [hkTooltip]="'Cell ' + item + ' — singleton, no restart'"
-          [hkTooltipPlacement]="item <= 8 ? 'top' : 'bottom'">
-          {{ item }}
-        </div>
-        }
-      </div>
-    </section>
-
-    <section class="test-card">
-      <h2>2. All four placements</h2>
-      <p>
-        Explicit placement on each button. The auto-flip still applies if a
-        chosen side runs out of viewport space.
-      </p>
-      <div class="placement-grid">
-        <div></div>
-        <div class="placement-cell">
-          <button mat-stroked-button [hkTooltip]="'Placement: top'" hkTooltipPlacement="top">Top</button>
-        </div>
-        <div></div>
-
-        <div class="placement-cell">
-          <button mat-stroked-button [hkTooltip]="'Placement: left'" hkTooltipPlacement="left">Left</button>
-        </div>
-        <div class="placement-cell placement-center">
-          <mat-icon style="color: var(--mat-sys-outline)">radio_button_unchecked</mat-icon>
-        </div>
-        <div class="placement-cell">
-          <button mat-stroked-button [hkTooltip]="'Placement: right'" hkTooltipPlacement="right">Right</button>
-        </div>
-
-        <div></div>
-        <div class="placement-cell">
-          <button mat-stroked-button [hkTooltip]="'Placement: bottom'" hkTooltipPlacement="bottom">Bottom</button>
-        </div>
-        <div></div>
-      </div>
-    </section>
-
-    <section class="test-card">
-      <h2>3. Works on any element</h2>
-      <p>
-        The directive attaches to plain HTML, not just buttons.
-        <strong>Tap</strong> each tile on a touch screen — or hover with a
-        mouse, or focus with the keyboard.
-      </p>
-      <div class="tag-grid">
-        <button class="tag-item" [hkTooltip]="'A native <button> — hover, focus and tap all work'"
-          hkTooltipPlacement="top">
-          &lt;button&gt;
-        </button>
-        <a class="tag-item" href="#" (click)="$event.preventDefault()"
-          [hkTooltip]="'An <a href> link — supporting browsers use native Interest Invokers, long-press on touch'"
-          hkTooltipPlacement="top">
-          &lt;a&gt;
-        </a>
-        <span class="tag-item" tabindex="0" [hkTooltip]="'An inline <span> — no button semantics needed'"
-          hkTooltipPlacement="bottom">
-          &lt;span&gt;
-        </span>
-        <div class="tag-item" tabindex="0" [hkTooltip]="'A plain <div> block — any element can be an anchor'"
-          hkTooltipPlacement="bottom">
-          &lt;div&gt;
-        </div>
-        <code class="tag-item" tabindex="0" [hkTooltip]="'A <code> snippet — annotate tokens mid-sentence'"
-          hkTooltipPlacement="top">
-          &lt;code&gt;
-        </code>
-        <img class="tag-item tag-item--img" src="favicon.ico" alt="Angular logo" tabindex="0"
-          [hkTooltip]="'An <img> — perfect for avatars and thumbnails'" hkTooltipPlacement="bottom" />
-        <input class="tag-item tag-item--input" type="text" placeholder="<input>"
-          [hkTooltip]="'An <input> — the tooltip also shows on focus'" hkTooltipPlacement="top" />
-        <mat-icon class="tag-item tag-item--icon" tabindex="0" [hkTooltip]="'A <mat-icon> component host works too'"
-          hkTooltipPlacement="bottom">info</mat-icon>
-      </div>
-    </section>
-
-    <section class="test-card">
-      <h2>4. Rich content — lazy templates</h2>
-      <p>
-        Pass an <code>&lt;ng-template&gt;</code> instead of a string — on any element, exactly
-        like string content. The card is stamped lazily on first show — its
-        <code>resource()</code> fires only then — and results are cached app-wide for
-        15&nbsp;s via <code>HkTooltipCache</code>. Hover a name twice: the second show is
-        instant, with the same fetch timestamp. Two triggers for the same user share one
-        request (both <em>&#64;amelia</em> tiles hit one cache entry).
-      </p>
-      <div class="tag-grid">
-        <button class="tag-item" [hkTooltip]="userCard" [hkTooltipData]="1"
-          [hkTooltipHideDelay]="200">
-          &lt;button&gt; &#64;amelia
-        </button>
-        <a class="tag-item" href="#" (click)="$event.preventDefault()" [hkTooltip]="userCard"
-          [hkTooltipData]="2" [hkTooltipHideDelay]="200" hkTooltipPlacement="bottom">
-          &lt;a&gt; &#64;jonas
-        </a>
-        <span class="tag-item" tabindex="0" [hkTooltip]="userCard" [hkTooltipData]="3"
-          [hkTooltipHideDelay]="200" hkTooltipPlacement="bottom">
-          &lt;span&gt; &#64;priya
-        </span>
-        <div class="tag-item" tabindex="0" [hkTooltip]="userCard" [hkTooltipData]="1"
-          [hkTooltipHideDelay]="200">
-          &lt;div&gt; &#64;amelia
-        </div>
-        <code class="tag-item" tabindex="0" [hkTooltip]="userCard" [hkTooltipData]="2"
-          [hkTooltipHideDelay]="200">
-          &lt;code&gt; &#64;jonas
-        </code>
-        <mat-icon class="tag-item tag-item--icon" tabindex="0" [hkTooltip]="userCard"
-          [hkTooltipData]="3" [hkTooltipHideDelay]="200" hkTooltipPlacement="bottom">
-          person
-        </mat-icon>
-        <span class="tag-item" tabindex="0" [hkTooltip]="photoCard" [hkTooltipHideDelay]="200">
-          <mat-icon>image</mat-icon> image
-        </span>
-        <span class="tag-item" tabindex="0" [hkTooltip]="videoCard" [hkTooltipHideDelay]="200"
-          hkTooltipPlacement="bottom">
-          <mat-icon>play_circle</mat-icon> video
-        </span>
-      </div>
-      <ng-template #userCard let-userId>
-        <app-user-card [userId]="userId" />
-      </ng-template>
-      <ng-template #photoCard>
-        <figure class="media-card">
-          <img src="https://picsum.photos/seed/hk-tooltips/440/280" width="220" height="140"
-            alt="Landscape from picsum.photos" />
-          <figcaption>
-            Lazily stamped — this image first downloads on first show.
-          </figcaption>
-        </figure>
-      </ng-template>
-      <ng-template #videoCard>
-        <figure class="media-card">
-          <video width="220" autoplay [muted]="true" loop playsinline>
-            <source
-              src="https://test-videos.co.uk/vids/bigbuckbunny/webm/vp8/360/Big_Buck_Bunny_360_10s_1MB.webm"
-              type="video/webm" />
-            <source
-              src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
-              type="video/mp4" />
-          </video>
-          <figcaption>
-            Autoplaying video. The view is destroyed on hide, so playback stops.
-          </figcaption>
-        </figure>
-      </ng-template>
-    </section>
-
-    } @else {
-
-    <section class="test-card full-width-card">
-      <h2>1. JS engine playground — hkJsTooltip</h2>
-      <p>
-        This browser has no CSS Anchor Positioning, so the tippy-style JS engine drives
-        the tooltips: rect math, viewport flipping, cross-axis clamping and scroll/resize
-        tracking while open. Same singleton popover, same content model.
-      </p>
-      <div class="tag-grid">
-        <button class="tag-item" hkJsTooltip="Placement: top" hkJsTooltipPlacement="top">Top</button>
-        <button class="tag-item" hkJsTooltip="Placement: bottom" hkJsTooltipPlacement="bottom">Bottom</button>
-        <button class="tag-item" hkJsTooltip="Placement: left" hkJsTooltipPlacement="left">Left</button>
-        <button class="tag-item" hkJsTooltip="Placement: right" hkJsTooltipPlacement="right">Right</button>
-        <span class="tag-item" tabindex="0" [hkJsTooltip]="jsUserCard" [hkJsTooltipData]="1"
-          [hkJsTooltipHideDelay]="200">
-          rich card
-        </span>
-      </div>
-      <ng-template #jsUserCard let-userId>
-        <app-user-card [userId]="userId" />
-      </ng-template>
-    </section>
-
-    }
-
-    <section class="test-card full-width-card">
-      <h2>Engine split — hkTooltip vs hkJsTooltip</h2>
-      <p>
-        One directive per positioning engine, one shared service owning the popover, the
-        content and the cache. Using the wrong directive for the platform throws at
-        construction — branch templates with the exported
-        <code>supportsAnchorPositioning()</code> helper. Active engine in this browser:
-        <code>{{ anchorSupported ? 'CSS Anchor Positioning — [hkTooltip]' : 'JS, tippy-style — [hkJsTooltip]' }}</code>
-      </p>
-    </section>
-
-    <section class="test-card full-width-card">
-      <h2>Theming variables</h2>
-      <p>
-        Set any <code>--tt-*</code> variable on <code>:root</code> to theme the tooltip.
-        Unset variables fall back to the Angular Material tooltip tokens, then the
-        <code>--mat-sys-*</code> system tokens, then the built-in default — so the tooltip
-        matches your Material theme out of the box.
-      </p>
-      <div class="var-table-wrap">
-        <table class="var-table">
-          <thead>
-            <tr>
-              <th>Variable</th>
-              <th>Purpose</th>
-              <th>Material fallback</th>
-              <th>Default</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (v of themeVars; track v.name) {
-            <tr>
-              <td><code [hkTooltip]="'Purpose: ' + v.purpose" hkTooltipPlacement="right">{{ v.name }}</code></td>
-              <td>{{ v.purpose }}</td>
-              <td>
-                @if (v.fallback.length) {
-                @for (f of v.fallback; track f; let last = $last) {
-                <code>{{ f }}</code>@if (!last) {<span class="fallback-arrow"> → </span>}
-                }
-                } @else {
-                <span class="no-fallback">—</span>
-                }
-              </td>
-              <td><code>{{ v.default }}</code></td>
-            </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </div>
-</main>
+  <mat-drawer-content class="layout__content">
+    <main>
+      <router-outlet />
+    </main>
+  </mat-drawer-content>
+</mat-drawer-container>

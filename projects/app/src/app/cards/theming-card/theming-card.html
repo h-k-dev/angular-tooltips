@@ -1,0 +1,43 @@
+<h2>Theming variables</h2>
+<p>
+  Set any <code>--tt-*</code> variable on <code>:root</code> to theme the tooltip.
+  Unset variables fall back to the Angular Material tooltip tokens, then the
+  <code>--mat-sys-*</code> system tokens, then the built-in default — so the tooltip
+  matches your Material theme out of the box.
+</p>
+<div class="var-table-wrap">
+  <table class="var-table">
+    <thead>
+      <tr>
+        <th>Variable</th>
+        <th>Purpose</th>
+        <th>Material fallback</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (v of themeVars; track v.name) {
+      <tr>
+        <td>
+          @if (anchorSupported) {
+          <code [hkTooltip]="'Purpose: ' + v.purpose" hkTooltipPlacement="right">{{ v.name }}</code>
+          } @else {
+          <code [hkJsTooltip]="'Purpose: ' + v.purpose" hkJsTooltipPlacement="right">{{ v.name }}</code>
+          }
+        </td>
+        <td>{{ v.purpose }}</td>
+        <td>
+          @if (v.fallback.length) {
+          @for (f of v.fallback; track f; let last = $last) {
+          <code>{{ f }}</code>@if (!last) {<span class="fallback-arrow"> → </span>}
+          }
+          } @else {
+          <span class="no-fallback">—</span>
+          }
+        </td>
+        <td><code>{{ v.default }}</code></td>
+      </tr>
+      }
+    </tbody>
+  </table>
+</div>

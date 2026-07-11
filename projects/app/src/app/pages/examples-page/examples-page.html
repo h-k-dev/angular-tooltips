@@ -1,0 +1,28 @@
+<header class="page-header">
+  <h1>Examples</h1>
+  <p>
+    Every pattern MatTooltip struggles with, driven by the engine this browser
+    supports. Jump between cards with the floating navigation on the right.
+  </p>
+</header>
+
+<div class="playground-grid">
+  @if (anchorSupported) {
+  <app-dense-grid-card id="dense-grid" />
+  <app-placements-card id="placements" />
+  <app-any-element-card id="any-element" />
+  <app-rich-content-card id="rich-content" />
+  } @else {
+  <app-js-playground-card id="js-playground" />
+  }
+  <app-engine-split-card id="engine-split" />
+  <app-theming-card id="theming" />
+</div>
+
+<nav class="float-nav" [class.float-nav--collapsed]="collapsed()" aria-label="Examples on this page">
+  <span class="float-nav__title">On this page</span>
+  @for (link of fragments; track link.fragment) {
+  <a class="float-nav__link" [class.float-nav__link--active]="activeFragment() === link.fragment"
+    [routerLink]="[]" [fragment]="link.fragment">{{ link.label }}</a>
+  }
+</nav>

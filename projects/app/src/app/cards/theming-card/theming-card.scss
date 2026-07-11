@@ -1,0 +1,48 @@
+@use '../card-base' as *;
+
+@include card-content;
+
+.var-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+}
+
+.var-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+
+  th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--mat-sys-on-surface);
+    background: var(--mat-sys-surface-container-low);
+    padding: 0.6rem 0.9rem;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.5rem 0.9rem;
+    border-top: 1px solid var(--mat-sys-outline-variant);
+    color: var(--mat-sys-on-surface-variant);
+    vertical-align: top;
+  }
+
+  code {
+    font-size: 0.78rem;
+    background: var(--mat-sys-surface-container-high);
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+    color: var(--mat-sys-on-surface);
+  }
+
+  .fallback-arrow {
+    color: var(--mat-sys-outline);
+  }
+
+  .no-fallback {
+    color: var(--mat-sys-outline);
+  }
+}

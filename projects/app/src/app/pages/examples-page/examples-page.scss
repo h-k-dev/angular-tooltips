@@ -1,0 +1,93 @@
+@use '../../cards/card-base' as *;
+
+:host {
+  display: block;
+}
+
+@include page-header;
+@include card-shell;
+@include card-grid;
+
+// ─── Floating fragment nav ────────────────────────────────────────────────────
+// A pill in the top-right, riding the spare space between the content column
+// and the viewport edge. Scrolling down collapses it to just the ACTIVE
+// fragment (scrollspy) so you always see where you are; scrolling up — or
+// being near the top — expands it again.
+.float-nav {
+  position: fixed;
+  right: 24px;
+  top: 88px; // just below the 64px toolbar
+  z-index: 100;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 8px;
+  width: 288px;
+
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--mat-sys-surface-container) 88%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--mat-sys-shadow) 14%, transparent);
+
+  // The overlap isn't worth it on narrow viewports.
+  @media (max-width: 1250px) {
+    display: none;
+  }
+}
+
+.float-nav__title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mat-sys-on-surface-variant);
+  padding: 0 8px 6px;
+  // Collapsible: animated via max-height/opacity (display can't transition).
+  max-height: 1.5rem;
+  overflow: hidden;
+  transition:
+    max-height 0.25s ease,
+    opacity 0.2s ease,
+    padding 0.25s ease;
+}
+
+.float-nav__link {
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant);
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 8px;
+  max-height: 2rem;
+  overflow: hidden;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    max-height 0.25s ease,
+    opacity 0.2s ease,
+    padding 0.25s ease;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--mat-sys-on-surface);
+    background: var(--mat-sys-surface-container-high);
+  }
+}
+
+.float-nav__link--active {
+  color: var(--mat-sys-primary);
+  font-weight: 600;
+  background: var(--mat-sys-secondary-container);
+}
+
+// Collapsed: only the active fragment stays visible.
+.float-nav--collapsed {
+  .float-nav__title,
+  .float-nav__link:not(.float-nav__link--active) {
+    max-height: 0;
+    opacity: 0;
+    padding-block: 0;
+    pointer-events: none;
+  }
+}

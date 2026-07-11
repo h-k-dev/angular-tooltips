@@ -1,0 +1,8 @@
+<h2>Engine split — hkTooltip vs hkJsTooltip</h2>
+<p>
+  One directive per positioning engine, one shared service owning the popover, the
+  content and the cache. Using the wrong directive for the platform throws at
+  construction — branch templates with the exported
+  <code>supportsAnchorPositioning()</code> helper. Active engine in this browser:
+  <code>{{ anchorSupported ? 'CSS Anchor Positioning — [hkTooltip]' : 'JS, tippy-style — [hkJsTooltip]' }}</code>
+</p>

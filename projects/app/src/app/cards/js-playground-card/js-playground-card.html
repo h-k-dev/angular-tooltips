@@ -1,0 +1,19 @@
+<h2>JS engine playground — hkJsTooltip</h2>
+<p>
+  This browser has no CSS Anchor Positioning, so the tippy-style JS engine drives
+  the tooltips: rect math, viewport flipping, cross-axis clamping and scroll/resize
+  tracking while open. Same singleton popover, same content model.
+</p>
+<div class="tag-grid">
+  <button class="tag-item" hkJsTooltip="Placement: top" hkJsTooltipPlacement="top">Top</button>
+  <button class="tag-item" hkJsTooltip="Placement: bottom" hkJsTooltipPlacement="bottom">Bottom</button>
+  <button class="tag-item" hkJsTooltip="Placement: left" hkJsTooltipPlacement="left">Left</button>
+  <button class="tag-item" hkJsTooltip="Placement: right" hkJsTooltipPlacement="right">Right</button>
+  <span class="tag-item" tabindex="0" [hkJsTooltip]="jsUserCard" [hkJsTooltipData]="1"
+    [hkJsTooltipHideDelay]="200">
+    rich card
+  </span>
+</div>
+<ng-template #jsUserCard let-userId>
+  <app-user-card [userId]="userId" />
+</ng-template>

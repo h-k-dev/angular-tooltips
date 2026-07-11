@@ -32,252 +32,66 @@ mat-toolbar {
   gap: 0.5rem;
 }
 
+// ─── Drawer layout ────────────────────────────────────────────────────────────
+// The container grows with the content so the DOCUMENT keeps owning the
+// scrolling (router anchorScrolling then scrolls the window); the aside nav
+// stays in view via position: sticky inside the drawer.
+.layout {
+  flex: 1;
+  // Material's default `overflow: hidden` zeroes the flex item's automatic
+  // minimum size, pinning the container to the viewport and clipping the
+  // cards. Visible lets it grow with the content, so the DOCUMENT scrolls
+  // and the router's anchorScrolling (window-based) reaches the fragments.
+  overflow: visible;
+}
+
+.layout__aside {
+  width: 288px;
+  border-right: 1px solid var(--mat-sys-outline-variant);
+}
+
+.layout__content {
+  // Unconstrained height → no nested scroll viewport; fragment targets
+  // scroll smoothly in the document.
+  overflow: visible;
+  scroll-behavior: smooth;
+}
+
+.aside-nav {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+}
+
+.aside-nav__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0.25rem 0 0.5rem 0.75rem;
+}
+
+.aside-nav__link {
+  justify-content: flex-start;
+  color: var(--mat-sys-on-surface);
+}
+
+.aside-nav__link--active {
+  color: var(--mat-sys-primary);
+  background: var(--mat-sys-secondary-container);
+}
+
 // ─── Main content ─────────────────────────────────────────────────────────────
+// Pages render into <main> via the router outlet; page-level styles
+// (header, card grid, shells) live in each page component.
 main {
-  max-width: 1400px;
+  max-width: 1200px;
   margin-inline: auto;
   padding: 16px;
-  flex: 1;
   width: 100%;
   box-sizing: border-box;
-}
-
-// ─── Page header ──────────────────────────────────────────────────────────────
-.page-header {
-  margin-bottom: 2.5rem;
-
-  h1 {
-    font-size: 2rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--mat-sys-on-surface);
-  }
-
-  p {
-    font-size: 1.05rem;
-    color: var(--mat-sys-on-surface-variant);
-    max-width: 65ch;
-    line-height: 1.6;
-  }
-}
-
-// ─── Grid of test cards ──────────────────────────────────────────────────────
-.playground-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 1.5rem;
-}
-
-// ─── Individual test card ─────────────────────────────────────────────────────
-.test-card {
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 12px;
-  padding: 1.5rem;
-  background: var(--mat-sys-surface);
-
-  h2 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 0 0 0.4rem;
-    color: var(--mat-sys-on-surface);
-  }
-
-  p {
-    font-size: 0.875rem;
-    color: var(--mat-sys-on-surface-variant);
-    margin: 0 0 1.25rem;
-    line-height: 1.6;
-
-    code {
-      font-size: 0.8rem;
-      background: var(--mat-sys-surface-container-high);
-      border-radius: 4px;
-      padding: 1px 5px;
-    }
-
-    em {
-      font-style: italic;
-    }
-
-    strong {
-      font-weight: 600;
-      color: var(--mat-sys-on-surface);
-    }
-  }
-}
-
-.full-width-card {
-  grid-column: 1 / -1;
-}
-
-// ─── Card 1: Dense grid ──────────────────────────────────────────────────────
-.dense-grid {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 0.5rem;
-}
-
-.grid-cell {
-  background: var(--mat-sys-surface-container-low);
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 6px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: crosshair;
-  color: var(--mat-sys-on-surface-variant);
-  transition: background 0.15s;
-  user-select: none;
-
-  &:hover {
-    background: var(--mat-sys-surface-container);
-  }
-}
-
-// ─── Card 2: Placement compass ────────────────────────────────────────────────
-.placement-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: auto auto auto;
-  gap: 0.5rem;
-}
-
-.placement-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.placement-center {
-  // The center cell is just a visual marker
-  font-size: 1.5rem;
-}
-
-// ─── Card 3: Every element ────────────────────────────────────────────────────
-.tag-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.tag-item {
-  // Neutralise native button/input/a styling so every tag renders as the
-  // same tile — the tag name inside is what identifies it.
-  appearance: none;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px; // comfortable tap target
-  padding: 0.5rem 0.9rem;
-  font: 600 0.85rem/1 monospace;
-  color: var(--mat-sys-on-surface);
-  background: var(--mat-sys-surface-container-low);
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 8px;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.15s;
-
-  &:hover,
-  &:focus-visible {
-    background: var(--mat-sys-surface-container);
-  }
-}
-
-.tag-item--img {
-  width: 44px;
-  padding: 0.5rem;
-  object-fit: contain;
-}
-
-.tag-item--input {
-  width: 7.5rem;
-  cursor: text;
-
-  &::placeholder {
-    color: var(--mat-sys-on-surface-variant);
-  }
-}
-
-.tag-item--icon {
-  width: 44px;
-  padding: 0;
-  color: var(--mat-sys-primary);
-  cursor: help;
-}
-
-// Rich-content tooltip templates (stamped into the singleton popover — the
-// nodes keep this component's scoping attribute, so these rules still apply).
-.media-card {
-  margin: 0;
-  display: grid;
-  gap: 6px;
-
-  img,
-  video {
-    // Fixed box so the tooltip doesn't resize when the media arrives.
-    display: block;
-    width: 220px;
-    height: 140px;
-    object-fit: cover;
-    border-radius: 6px;
-    background: color-mix(in srgb, currentColor 15%, transparent);
-  }
-
-  figcaption {
-    max-width: 220px;
-    font-size: 11px;
-    opacity: 0.7;
-  }
-}
-
-// ─── Card 4: Theming variables table ─────────────────────────────────────────
-.var-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 8px;
-}
-
-.var-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-
-  th {
-    text-align: left;
-    font-weight: 600;
-    color: var(--mat-sys-on-surface);
-    background: var(--mat-sys-surface-container-low);
-    padding: 0.6rem 0.9rem;
-    white-space: nowrap;
-  }
-
-  td {
-    padding: 0.5rem 0.9rem;
-    border-top: 1px solid var(--mat-sys-outline-variant);
-    color: var(--mat-sys-on-surface-variant);
-    vertical-align: top;
-  }
-
-  code {
-    font-size: 0.78rem;
-    background: var(--mat-sys-surface-container-high);
-    border-radius: 4px;
-    padding: 1px 5px;
-    white-space: nowrap;
-    color: var(--mat-sys-on-surface);
-  }
-
-  .fallback-arrow {
-    color: var(--mat-sys-outline);
-  }
-
-  .no-fallback {
-    color: var(--mat-sys-outline);
-  }
 }

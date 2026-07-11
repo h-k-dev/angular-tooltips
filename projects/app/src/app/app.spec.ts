@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { App } from './app';
 
 // jsdom has no CSS Anchor Positioning; without this stub every [hkTooltip]
@@ -16,6 +17,8 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
+      // RouterLink (aside fragment nav) needs a Router at DI time.
+      providers: [provideRouter([])],
     }).compileComponents();
   });
 
@@ -25,10 +28,13 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  it('should render the page navigation', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Modern Tooltip Playground');
+    const labels = [...compiled.querySelectorAll('.aside-nav__link')].map((a) =>
+      a.textContent?.trim(),
+    );
+    expect(labels).toEqual(['Home', 'Anchor Tooltips', 'JS Tooltips', 'Examples']);
   });
 });

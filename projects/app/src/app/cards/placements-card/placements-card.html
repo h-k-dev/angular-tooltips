@@ -1,0 +1,28 @@
+<h2>All four placements</h2>
+<p>
+  Explicit placement on each button. The auto-flip still applies if a
+  chosen side runs out of viewport space.
+</p>
+<div class="placement-grid">
+  <div></div>
+  <div class="placement-cell">
+    <button mat-stroked-button [hkTooltip]="'Placement: top'" hkTooltipPlacement="top">Top</button>
+  </div>
+  <div></div>
+
+  <div class="placement-cell">
+    <button mat-stroked-button [hkTooltip]="'Placement: left'" hkTooltipPlacement="left">Left</button>
+  </div>
+  <div class="placement-cell placement-center">
+    <mat-icon style="color: var(--mat-sys-outline)">radio_button_unchecked</mat-icon>
+  </div>
+  <div class="placement-cell">
+    <button mat-stroked-button [hkTooltip]="'Placement: right'" hkTooltipPlacement="right">Right</button>
+  </div>
+
+  <div></div>
+  <div class="placement-cell">
+    <button mat-stroked-button [hkTooltip]="'Placement: bottom'" hkTooltipPlacement="bottom">Bottom</button>
+  </div>
+  <div></div>
+</div>

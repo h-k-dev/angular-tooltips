@@ -459,7 +459,13 @@ export class TooltipsManager {
       const src = (e as Event & { source?: Element }).source ?? null;
       if (!(src instanceof HTMLElement)) return;
       const dir = this.#registry.get(src.getAttribute(ATTR_ANCHOR_ID) ?? '');
-      if (dir) this.show(dir);
+      // No content (yet): cancel the event, or the browser's default action
+      // would open the popover empty — show() alone can't stop that.
+      if (!dir || !this.#hasContent(dir)) {
+        e.preventDefault();
+        return;
+      }
+      this.show(dir);
     });
 
     // Losing interest: the browser hides the popover; we sync state and

@@ -1,0 +1,29 @@
+@use '../card-base' as *;
+
+@include card-content;
+
+.dense-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 0.5rem;
+}
+
+.grid-cell {
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 6px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: crosshair;
+  color: var(--mat-sys-on-surface-variant);
+  transition: background 0.15s;
+  user-select: none;
+
+  &:hover {
+    background: var(--mat-sys-surface-container);
+  }
+}
