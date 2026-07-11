@@ -19,11 +19,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { Dialog } from './dialog/dialog';
 
 // Angular Tooltips (toolbar triggers)
-import {
-  HkTooltip,
-  JSTooltips,
-  supportsAnchorPositioning,
-} from '../../../angular-tooltips/src/public-api';
+import { HkTooltip } from '../../../angular-tooltips/src/public-api';
 
 @Component({
   selector: '[app-root]',
@@ -41,7 +37,6 @@ import {
 
     // Angular Tooltips
     HkTooltip,
-    JSTooltips,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
@@ -56,10 +51,6 @@ export class App {
 
   theme = signal<'light' | 'dark'>('light');
   themeClass = computed(() => `${this.theme()}-mode`);
-
-  // Strict engine split: [hkTooltip] throws without CSS Anchor Positioning,
-  // [hkJsTooltip] throws with it — so the toolbar triggers branch on this.
-  protected readonly anchorSupported = supportsAnchorPositioning();
 
   toggleTheme() {
     if (this.#document.startViewTransition) {

@@ -16,12 +16,6 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'js-tooltips',
-    title: 'Angular Tooltips — JS Tooltips',
-    loadComponent: () =>
-      import('./pages/js-tooltips-page/js-tooltips-page').then((m) => m.JsTooltipsPage),
-  },
-  {
     path: 'examples',
     title: 'Angular Tooltips — Examples',
     loadComponent: () =>

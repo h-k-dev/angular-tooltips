@@ -1,22 +1,13 @@
 import { Component } from '@angular/core';
 
-import {
-  HkTooltip,
-  JSTooltips,
-  supportsAnchorPositioning,
-} from '../../../../../angular-tooltips/src/public-api';
-
 @Component({
   selector: 'app-theming-card',
-  imports: [HkTooltip, JSTooltips],
+  imports: [],
   templateUrl: './theming-card.html',
   styleUrl: './theming-card.scss',
   host: { class: 'test-card full-width-card' },
 })
 export class ThemingCard {
-  // This card renders with either engine, so its own tooltips branch too.
-  protected readonly anchorSupported = supportsAnchorPositioning();
-
   // Mirrors the public theming API in the library's global stylesheet:
   // --tt-* → Material tooltip token → Material system token → default.
   protected readonly themeVars: {

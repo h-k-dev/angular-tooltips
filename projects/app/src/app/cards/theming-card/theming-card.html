@@ -18,13 +18,7 @@
     <tbody>
       @for (v of themeVars; track v.name) {
       <tr>
-        <td>
-          @if (anchorSupported) {
-          <code [hkTooltip]="'Purpose: ' + v.purpose" hkTooltipPlacement="right">{{ v.name }}</code>
-          } @else {
-          <code [hkJsTooltip]="'Purpose: ' + v.purpose" hkJsTooltipPlacement="right">{{ v.name }}</code>
-          }
-        </td>
+        <td><code>{{ v.name }}</code></td>
         <td>{{ v.purpose }}</td>
         <td>
           @if (v.fallback.length) {

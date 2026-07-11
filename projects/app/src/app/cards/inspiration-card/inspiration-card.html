@@ -1,33 +1,12 @@
 <h2>Inspiration</h2>
 
-<!--
-  Anchor-ready scaffold: every tile below is already a registered tooltip
-  trigger (anchor-name / registry id / interestfor wiring all in place).
-  Content is intentionally empty — an empty string never shows a tooltip
-  (and on the interestfor path the manager cancels the browser's interest).
-  To bring a tile to life, replace hkTooltip="" with a string or a
-  TemplateRef + hkTooltipData, exactly like the Rich content card.
--->
-@if (anchorSupported) {
+<!-- interestfor-only: <code>, <img> and <input> can't be interest invokers,
+     so they have no place on this card. -->
 <div class="tag-grid">
-  <button class="tag-item" hkTooltip="">&lt;button&gt;</button>
-  <a class="tag-item" href="#" (click)="$event.preventDefault()" hkTooltip="">&lt;a&gt;</a>
-  <span class="tag-item" tabindex="0" hkTooltip="">&lt;span&gt;</span>
-  <div class="tag-item" tabindex="0" hkTooltip="">&lt;div&gt;</div>
-  <code class="tag-item" tabindex="0" hkTooltip="">&lt;code&gt;</code>
-  <img class="tag-item tag-item--img" src="favicon.ico" alt="placeholder" tabindex="0" hkTooltip="" />
-  <input class="tag-item tag-item--input" type="text" placeholder="<input>" hkTooltip="" />
-  <mat-icon class="tag-item tag-item--icon" tabindex="0" hkTooltip="">lightbulb</mat-icon>
+  <button class="tag-item" anchorTooltips="<button>">&lt;button&gt;</button>
+  <a class="tag-item" href="#" (click)="$event.preventDefault()" anchorTooltips="<a>">&lt;a&gt;</a>
 </div>
-} @else {
-<div class="tag-grid">
-  <button class="tag-item" hkJsTooltip="">&lt;button&gt;</button>
-  <a class="tag-item" href="#" (click)="$event.preventDefault()" hkJsTooltip="">&lt;a&gt;</a>
-  <span class="tag-item" tabindex="0" hkJsTooltip="">&lt;span&gt;</span>
-  <div class="tag-item" tabindex="0" hkJsTooltip="">&lt;div&gt;</div>
-  <code class="tag-item" tabindex="0" hkJsTooltip="">&lt;code&gt;</code>
-  <img class="tag-item tag-item--img" src="favicon.ico" alt="placeholder" tabindex="0" hkJsTooltip="" />
-  <input class="tag-item tag-item--input" type="text" placeholder="<input>" hkJsTooltip="" />
-  <mat-icon class="tag-item tag-item--icon" tabindex="0" hkJsTooltip="">lightbulb</mat-icon>
+
+<div id="anchor-tooltips" class="anchor-tooltips stylized" popover anchorTooltipsPopover>
+  <strong>{{ invokers.label() }}</strong> — {{ content() }}
 </div>
-}

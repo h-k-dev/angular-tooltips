@@ -1,8 +1,25 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
 import { HkTooltip, TooltipsManager, TOOLTIP_ID } from './angular-tooltips';
+
+// Lifecycle probe: proves projected components run ngOnInit/ngOnDestroy as
+// the singleton switches between triggers.
+const lifecycle = { inits: 0, destroys: 0 };
+
+@Component({
+  selector: 'spec-probe',
+  template: `<span class="probe">probe</span>`,
+})
+class Probe implements OnInit, OnDestroy {
+  ngOnInit() {
+    lifecycle.inits++;
+  }
+  ngOnDestroy() {
+    lifecycle.destroys++;
+  }
+}
 
 @Component({
   imports: [HkTooltip],
@@ -22,29 +39,36 @@ class Host {}
 class TemplateHost {}
 
 @Component({
-  imports: [HkTooltip],
+  imports: [HkTooltip, Probe],
   template: `
-    <a href="/docs" [hkTooltip]="card" [hkTooltipData]="'anchor'">link</a>
-    <span [hkTooltip]="card" [hkTooltipData]="'span'">span</span>
-    <div [hkTooltip]="card" [hkTooltipData]="'div'"><em>nested child</em></div>
-    <ng-template #card let-tag>
-      <b class="tag-card">from {{ tag }}</b>
-    </ng-template>
+    <button [hkTooltip]="cardA">A</button>
+    <a href="/docs" [hkTooltip]="cardB">B</a>
+    <ng-template #cardA><spec-probe /></ng-template>
+    <ng-template #cardB><b class="b-card">B content</b></ng-template>
   `,
 })
-class MultiTagHost {}
+class TwoTriggerHost {}
 
-// The test DOM knows neither CSS Anchor Positioning, the Popover API, nor
-// the :popover-open pseudo-class. `anchorSupported` steers the lazy
-// supportsAnchorPositioning() check (hkTooltip throws when it is false);
-// :hover / :focus-within report engagement from the fakeHover set so tests
-// can steer the manager's handoff logic.
+// The test DOM knows neither CSS Anchor Positioning, Interest Invokers, the
+// Popover API, nor the :popover-open pseudo-class. `anchorSupported` steers
+// the lazy supportsAnchorPositioning() check; `interestForElement` is
+// stubbed onto the REAL invoker prototypes only, so host-compatibility
+// checks behave like the platform. :hover / :focus-within report engagement
+// from the fakeHover set so tests can steer the handoff logic.
 let anchorSupported = true;
 const fakeHover = new Set<Element>();
 const realCSS = globalThis.CSS;
 const realMatches = Element.prototype.matches;
+const INVOKER_PROTOS = [HTMLButtonElement.prototype, HTMLAnchorElement.prototype];
 beforeAll(() => {
   (globalThis as { CSS: unknown }).CSS = { supports: () => anchorSupported };
+  for (const proto of INVOKER_PROTOS) {
+    Object.defineProperty(proto, 'interestForElement', {
+      value: null,
+      writable: true,
+      configurable: true,
+    });
+  }
   HTMLElement.prototype.showPopover ??= function () {};
   HTMLElement.prototype.hidePopover ??= function () {};
   Element.prototype.matches = function (this: Element, selector: string) {
@@ -55,11 +79,16 @@ beforeAll(() => {
 });
 afterAll(() => {
   (globalThis as { CSS: unknown }).CSS = realCSS;
+  for (const proto of INVOKER_PROTOS) {
+    delete (proto as { interestForElement?: unknown }).interestForElement;
+  }
   Element.prototype.matches = realMatches;
 });
 
 beforeEach(() => {
   anchorSupported = true;
+  lifecycle.inits = 0;
+  lifecycle.destroys = 0;
 });
 afterEach(() => {
   fakeHover.clear();
@@ -71,131 +100,101 @@ function tooltipEl(): HTMLElement {
   return document.getElementById(TOOLTIP_ID)!;
 }
 
+/** What the browser fires on the target when an invoker gains interest. */
+function gainInterest(source: Element): Event {
+  const e = new Event('interest', { cancelable: true });
+  Object.defineProperty(e, 'source', { value: source });
+  tooltipEl().dispatchEvent(e);
+  return e;
+}
+
 describe('HkTooltip', () => {
-  it('should create', async () => {
+  it('should create and wire the interestfor trigger', async () => {
     const fixture = TestBed.createComponent(Host);
     await fixture.whenStable();
 
-    const directive = fixture.debugElement.query(By.directive(HkTooltip));
-    expect(directive).toBeTruthy();
-    expect(directive.injector.get(HkTooltip).content()).toBe('Hello');
+    const de = fixture.debugElement.query(By.directive(HkTooltip));
+    expect(de.injector.get(HkTooltip).content()).toBe('Hello');
+    expect((de.nativeElement as Element).getAttribute('interestfor')).toBe(TOOLTIP_ID);
+    expect((de.nativeElement as HTMLElement).style.getPropertyValue('interest-delay-end')).toBe(
+      '80ms',
+    );
   });
 
-  it('throws at construction without CSS Anchor Positioning support', () => {
+  it('throws at construction without platform support', () => {
     anchorSupported = false;
     expect(() => {
       const fixture = TestBed.createComponent(Host);
       fixture.detectChanges();
-    }).toThrowError(/hkJsTooltip/);
+    }).toThrowError(/anchor-native/);
   });
 
-  it('renders string content with role="tooltip" and the anchor engine class', async () => {
+  it('throws at construction on a host that cannot be an interest invoker', () => {
+    @Component({
+      imports: [HkTooltip],
+      template: `<div hkTooltip="nope">div</div>`,
+    })
+    class DivHost {}
+    expect(() => {
+      const fixture = TestBed.createComponent(DivHost);
+      fixture.detectChanges();
+    }).toThrowError(/interest invoker/);
+  });
+
+  it('renders string content and moves the anchor name onto the source', async () => {
     const fixture = TestBed.createComponent(Host);
     await fixture.whenStable();
-    const dir = fixture.debugElement.query(By.directive(HkTooltip)).injector.get(HkTooltip);
+    const host = (fixture.nativeElement as Element).querySelector('button')!;
 
-    TestBed.inject(TooltipsManager).show(dir);
+    const e = gainInterest(host);
 
+    expect(e.defaultPrevented).toBe(false);
     expect(tooltipEl().textContent).toBe('Hello');
     expect(tooltipEl().getAttribute('role')).toBe('tooltip');
-    expect(tooltipEl().classList.contains('hk-tooltip--anchor')).toBe(true);
-    expect(tooltipEl().classList.contains('hk-tooltip--js')).toBe(false);
     expect(tooltipEl().getAttribute('data-placement-pref')).toBe('top');
+    expect((host as HTMLElement).style.getPropertyValue('anchor-name')).toBe('--hk-invoker');
   });
 
   it('stamps template content lazily with [hkTooltipData] as $implicit', async () => {
     const fixture = TestBed.createComponent(TemplateHost);
     await fixture.whenStable();
-    const dir = fixture.debugElement.query(By.directive(HkTooltip)).injector.get(HkTooltip);
-    const manager = TestBed.inject(TooltipsManager);
+    const host = (fixture.nativeElement as Element).querySelector('button')!;
 
-    // Nothing is instantiated before the first show.
+    // Nothing is instantiated before the first interest.
     expect(tooltipEl().querySelector('.user-card')).toBeNull();
 
-    manager.show(dir);
+    gainInterest(host);
 
     expect(tooltipEl().querySelector('.user-card')?.textContent).toContain('User 42');
     // Rich content is a hovercard, not a tooltip, in ARIA terms.
     expect(tooltipEl().hasAttribute('role')).toBe(false);
   });
 
-  it('shows template content via body delegation from any host tag', async () => {
-    const fixture = TestBed.createComponent(MultiTagHost);
+  it('runs the full component lifecycle when switching between triggers', async () => {
+    const fixture = TestBed.createComponent(TwoTriggerHost);
     await fixture.whenStable();
-
-    const cases: [string, string][] = [
-      ['a', 'from anchor'], // no Interest Invokers in jsdom → JS-delegation path
-      ['span', 'from span'],
-      ['div em', 'from div'], // bubbles from a nested child → closest() lookup
+    const [btn, link] = [
+      (fixture.nativeElement as Element).querySelector('button')!,
+      (fixture.nativeElement as Element).querySelector('a')!,
     ];
-    for (const [selector, expected] of cases) {
-      const target = (fixture.nativeElement as Element).querySelector(selector)!;
-      target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-      expect(tooltipEl().querySelector('.tag-card')?.textContent).toBe(expected);
-    }
-  });
 
-  it('hands off from an interestfor anchor without breaking either tooltip', async () => {
-    const fixture = TestBed.createComponent(MultiTagHost);
-    await fixture.whenStable();
-    const manager = TestBed.inject(TooltipsManager);
-    const [linkDe, spanDe] = fixture.debugElement.queryAll(By.directive(HkTooltip));
-    const link = linkDe.injector.get(HkTooltip);
-    const span = spanDe.injector.get(HkTooltip);
+    gainInterest(btn);
+    expect(lifecycle.inits).toBe(1);
+    expect(lifecycle.destroys).toBe(0);
+    expect(tooltipEl().querySelector('.probe')).toBeTruthy();
 
-    const loseInterest = () => {
-      const e = new Event('loseinterest', { cancelable: true });
-      Object.defineProperty(e, 'source', { value: linkDe.nativeElement });
-      tooltipEl().dispatchEvent(e);
-      return e;
-    };
-    // What the browser does whenever it executes the popover hide (sync or
-    // in a later task — implementations differ): beforetoggle fires inside.
-    const browserHide = () => {
-      const e = new Event('beforetoggle');
-      Object.defineProperty(e, 'newState', { value: 'closed' });
-      tooltipEl().dispatchEvent(e);
-    };
-    const flushMicrotasks = () => Promise.resolve();
+    // Interest moves to the second trigger: A's component is destroyed,
+    // the anchor name moves, B's content renders.
+    gainInterest(link);
+    expect(lifecycle.destroys).toBe(1);
+    expect(tooltipEl().querySelector('.probe')).toBeNull();
+    expect(tooltipEl().querySelector('.b-card')?.textContent).toBe('B content');
+    expect((btn as HTMLElement).style.getPropertyValue('anchor-name')).toBe('');
+    expect((link as HTMLElement).style.getPropertyValue('anchor-name')).toBe('--hk-invoker');
 
-    // Pointer moved link → span before interest-delay-end elapsed. The
-    // stale loseinterest must NOT be cancelled — a cancelled loseinterest
-    // leaves the invoker permanently "interested" and its next hover fires
-    // no interest event at all. The handler leaves the hiding to the
-    // browser.
-    manager.show(link);
-    manager.show(span);
-    fakeHover.add(spanDe.nativeElement);
-    const stale = loseInterest();
-    expect(stale.defaultPrevented).toBe(false);
-    expect(tooltipEl().querySelector('.tag-card')?.textContent).toBe('from span');
-
-    // …and whenever the browser's hide actually executes, the beforetoggle
-    // guard reopens before the next paint, entrance animation suppressed.
-    browserHide();
-    await flushMicrotasks();
-    expect(tooltipEl().style.animation).toBe('none');
-    expect(tooltipEl().querySelector('.tag-card')?.textContent).toBe('from span');
-
-    // Same stale event with nothing engaged: hide for real — a
-    // link → span → elsewhere sweep must not resurrect a tooltip.
-    fakeHover.clear();
-    tooltipEl().style.removeProperty('animation');
-    const late = loseInterest();
-    expect(late.defaultPrevented).toBe(false);
-    await flushMicrotasks();
-    expect(tooltipEl().textContent).toBe('');
-    // a hide arriving with no active trigger must not reopen either
-    browserHide();
-    await flushMicrotasks();
-    expect(tooltipEl().style.animation).toBe('');
-
-    // And a loseinterest for the anchor that is actually active hides,
-    // engaged or not.
-    manager.show(link);
-    fakeHover.add(linkDe.nativeElement);
-    loseInterest();
-    expect(tooltipEl().textContent).toBe('');
+    // Back to A: a fresh component instance.
+    gainInterest(btn);
+    expect(lifecycle.inits).toBe(2);
   });
 
   it('cancels browser interest for triggers without content yet', async () => {
@@ -207,27 +206,75 @@ describe('HkTooltip', () => {
     const fixture = TestBed.createComponent(EmptyHost);
     await fixture.whenStable();
 
-    const link = (fixture.nativeElement as Element).querySelector('a')!;
-    const e = new Event('interest', { cancelable: true });
-    Object.defineProperty(e, 'source', { value: link });
-    tooltipEl().dispatchEvent(e);
+    const e = gainInterest((fixture.nativeElement as Element).querySelector('a')!);
 
     // The default action would open the popover empty — must be cancelled.
     expect(e.defaultPrevented).toBe(true);
     expect(tooltipEl().textContent).toBe('');
   });
 
-  it('destroys the projected view when the trigger is destroyed', async () => {
-    const fixture = TestBed.createComponent(TemplateHost);
+  it('hands off between invokers without breaking either tooltip', async () => {
+    const fixture = TestBed.createComponent(TwoTriggerHost);
     await fixture.whenStable();
-    const dir = fixture.debugElement.query(By.directive(HkTooltip)).injector.get(HkTooltip);
+    const btn = (fixture.nativeElement as Element).querySelector('button') as HTMLElement;
+    const link = (fixture.nativeElement as Element).querySelector('a') as HTMLElement;
 
-    TestBed.inject(TooltipsManager).show(dir);
-    expect(tooltipEl().querySelector('.user-card')).toBeTruthy();
+    const loseInterest = (source: Element) => {
+      const e = new Event('loseinterest', { cancelable: true });
+      Object.defineProperty(e, 'source', { value: source });
+      tooltipEl().dispatchEvent(e);
+      return e;
+    };
+    const browserHide = () => {
+      const e = new Event('beforetoggle');
+      Object.defineProperty(e, 'newState', { value: 'closed' });
+      tooltipEl().dispatchEvent(e);
+    };
+    const flushMicrotasks = () => Promise.resolve();
+
+    // Interest moved button → link before interest-delay-end elapsed. The
+    // stale loseinterest must NOT be cancelled — a cancelled loseinterest
+    // leaves the invoker permanently "interested" and its next hover fires
+    // no interest event at all.
+    gainInterest(btn);
+    gainInterest(link);
+    fakeHover.add(link);
+    const stale = loseInterest(btn);
+    expect(stale.defaultPrevented).toBe(false);
+    expect(tooltipEl().querySelector('.b-card')).toBeTruthy();
+
+    // …and whenever the browser's hide actually executes, the beforetoggle
+    // guard reopens before the next paint, entrance animation suppressed.
+    browserHide();
+    await flushMicrotasks();
+    expect(tooltipEl().style.animation).toBe('none');
+    expect(tooltipEl().querySelector('.b-card')).toBeTruthy();
+
+    // Same stale event with nothing engaged: hide for real — a
+    // trigger → trigger → elsewhere sweep must not resurrect a tooltip.
+    fakeHover.clear();
+    tooltipEl().style.removeProperty('animation');
+    loseInterest(btn);
+    await flushMicrotasks();
+    expect(tooltipEl().textContent).toBe('');
+    // a hide arriving with no active trigger must not reopen either
+    browserHide();
+    await flushMicrotasks();
+    expect(tooltipEl().style.animation).toBe('');
+  });
+
+  it('destroys the projected view and releases the anchor when the trigger is destroyed', async () => {
+    const fixture = TestBed.createComponent(TwoTriggerHost);
+    await fixture.whenStable();
+    const btn = (fixture.nativeElement as Element).querySelector('button') as HTMLElement;
+
+    gainInterest(btn);
+    expect(tooltipEl().querySelector('.probe')).toBeTruthy();
 
     fixture.destroy();
 
-    expect(tooltipEl().querySelector('.user-card')).toBeNull();
-    expect(tooltipEl().textContent).toBe('');
+    expect(lifecycle.destroys).toBe(1);
+    expect(tooltipEl().querySelector('.probe')).toBeNull();
+    expect(btn.style.getPropertyValue('anchor-name')).toBe('');
   });
 });

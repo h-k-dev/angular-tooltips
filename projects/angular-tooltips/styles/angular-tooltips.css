@@ -8,14 +8,11 @@
 
      @import '@h-k-dev/angular-tooltips/styles/angular-tooltips.css';
 
-   The singleton popover element carries:
-
-     .hk-tooltip           base bubble, shared by both engines
-     .hk-tooltip--anchor   CSS Anchor Positioning engine   ([hkTooltip])
-     .hk-tooltip--js       JS positioning engine, à la tippy ([hkJsTooltip])
-
-   The manager toggles the engine class per active trigger; each directive
-   therefore "injects" its own class and only its rules apply.
+   One singleton popover (.hk-tooltip), anchored via `--hk-invoker` — the
+   manager moves that anchor NAME onto whichever trigger holds interest, so
+   this sheet never changes at runtime. Placement, viewport flipping, tail
+   direction and hide-on-scroll-out are all browser CSS; there is no JS
+   positioning anywhere.
 
    ── Why a one-shot keyframe entrance and no transitions (singleton!) ──
    A keyframe animation runs once when the element starts rendering (popover
@@ -25,7 +22,6 @@
    classic drifting-text / blinking-tail artifacts. Exit is instant, so
    there is never a half-faded ghost re-evaluating its tail mid-flight.     */
 
-/* ── Base bubble (both engines) ─────────────────────────────────────────── */
 .hk-tooltip {
   /* Public theming API — every visual knob resolves through a private
      --_tt-* variable:  --tt-* (your theme) → --mat-tooltip-* → --mat-sys-*
@@ -65,6 +61,13 @@
   --_tt-fade-duration:   var(--tt-fade-duration, 0.15s);
   --_tt-slide-distance:  var(--tt-slide-distance, 10px);
 
+  /* Anchored query container: lets ::before ask "did a position-try
+     fallback actually fire?" — an element cannot match a container query
+     against itself, only descendants and pseudos can, which is also why
+     the entrance direction is keyed off [data-placement-pref] (preferred
+     side) rather than the resolved side. */
+  container-type: anchored;
+
   box-sizing: border-box;
   border: none;
   overflow: visible;            /* the tail renders outside the border box */
@@ -87,22 +90,52 @@
 
   position: fixed;
   inset: auto;
+  margin: var(--_tt-gap);
 
-  /* One-shot entrance; direction is set per placement by each engine below.
-     Two layered animations: the directional slide gets the custom linear
-     curve, the opacity fade a quick ease-out — the tooltip appears fast
-     while the motion is still settling. */
+  /* The one moving part: the manager moves this anchor NAME onto the
+     trigger that holds interest; everything here re-resolves against it. */
+  position-anchor: --hk-invoker;
+
+  /* Hide automatically when the anchor scrolls out of view or is clipped. */
+  position-visibility: anchors-visible;
+
+  /* One-shot entrance; direction is set per placement below. Two layered
+     animations: the directional slide gets the custom linear curve, the
+     opacity fade a quick ease-out — the tooltip appears fast while the
+     motion is still settling. */
   animation:
     tt-in-up var(--_tt-enter-duration) linear(0, 0.68 24%, 0.86 48%, 0.95 72%, 1),
     tt-fade  var(--_tt-fade-duration) ease-out;
 }
 
-/* Tail: plain absolutely-positioned border triangle hanging off the bubble
-   into the gap. Direction is set per engine below. */
-.hk-tooltip::before {
-  content: "";
-  position: absolute;
-  border: var(--_tt-tail) solid transparent;
+/* ── Preferred side + built-in flip fallback ─────────────────────────────
+   Set by the manager from [hkTooltipPlacement]. The browser does all
+   overlap detection; flip-block / flip-inline are queryable from the tail
+   below. */
+
+.hk-tooltip[data-placement-pref="top"] {
+  position-area: top;
+  position-try-fallbacks: flip-block;
+  animation-name: tt-in-up, tt-fade;   /* animation-name overrides the list */
+  transform-origin: bottom;
+}
+.hk-tooltip[data-placement-pref="bottom"] {
+  position-area: bottom;
+  position-try-fallbacks: flip-block;
+  animation-name: tt-in-down, tt-fade;
+  transform-origin: top;
+}
+.hk-tooltip[data-placement-pref="left"] {
+  position-area: left;
+  position-try-fallbacks: flip-inline;
+  animation-name: tt-in-left, tt-fade;
+  transform-origin: right;
+}
+.hk-tooltip[data-placement-pref="right"] {
+  position-area: right;
+  position-try-fallbacks: flip-inline;
+  animation-name: tt-in-right, tt-fade;
+  transform-origin: left;
 }
 
 /* Directional slides — transform only; opacity lives in tt-fade so the two
@@ -128,49 +161,21 @@
   to   { opacity: 1; }
 }
 
-/* ── Anchor engine ([hkTooltip]) — the complete CSS Anchor Positioning way ──
-   Placement, viewport flipping, tail direction and hide-when-scrolled-out
-   are ALL browser CSS; JS never reads a rect. The tooltip is an anchored
-   query container so its ::before can ask "did a position-try fallback
-   actually fire?" via @container anchored(fallback: …). An element cannot
-   match a container query against itself — only descendants and pseudos —
-   which is why the flip queries only ever select ::before, and why the
-   entrance direction is keyed off [data-placement-pref] (preferred side)
-   rather than the resolved side. */
-.hk-tooltip--anchor {
-  container-type: anchored;
-  margin: var(--_tt-gap);
-  /* Hide automatically when the anchor scrolls out of view or is clipped. */
-  position-visibility: anchors-visible;
+/* ── The tail ─────────────────────────────────────────────────────────────
+   Plain absolutely-positioned border triangle hanging off the bubble into
+   the gap, keyed off the PREFERRED side and flipped via anchored()
+   container queries when a position-try fallback fired. (A pseudo cannot
+   anchor() to the trigger itself: its containing block is the bubble, so
+   the trigger is not an acceptable anchor element for it.) */
+
+.hk-tooltip::before {
+  content: "";
+  position: absolute;
+  border: var(--_tt-tail) solid transparent;
 }
 
-.hk-tooltip--anchor[data-placement-pref="top"] {
-  position-area: top;
-  position-try-fallbacks: flip-block;
-  animation-name: tt-in-up, tt-fade;   /* animation-name overrides the list */
-  transform-origin: bottom;
-}
-.hk-tooltip--anchor[data-placement-pref="bottom"] {
-  position-area: bottom;
-  position-try-fallbacks: flip-block;
-  animation-name: tt-in-down, tt-fade;
-  transform-origin: top;
-}
-.hk-tooltip--anchor[data-placement-pref="left"] {
-  position-area: left;
-  position-try-fallbacks: flip-inline;
-  animation-name: tt-in-left, tt-fade;
-  transform-origin: right;
-}
-.hk-tooltip--anchor[data-placement-pref="right"] {
-  position-area: right;
-  position-try-fallbacks: flip-inline;
-  animation-name: tt-in-right, tt-fade;
-  transform-origin: left;
-}
-
-/* Anchor-engine tails: preferred side, flipped via anchored() queries. */
-.hk-tooltip--anchor[data-placement-pref="top"]::before {
+/* pref=top: tooltip above trigger → tail on bottom edge, pointing down */
+.hk-tooltip[data-placement-pref="top"]::before {
   left: 50%;
   translate: -50% 0;
   bottom: calc(-1 * var(--_tt-tail));
@@ -178,7 +183,7 @@
   border-top-color: var(--_tt-container-color);
 }
 @container anchored(fallback: flip-block) {
-  .hk-tooltip--anchor[data-placement-pref="top"]::before {
+  .hk-tooltip[data-placement-pref="top"]::before {
     bottom: auto;
     top: calc(-1 * var(--_tt-tail));
     border-bottom: var(--_tt-tail) solid var(--_tt-container-color);
@@ -186,7 +191,8 @@
   }
 }
 
-.hk-tooltip--anchor[data-placement-pref="bottom"]::before {
+/* pref=bottom: tail on top edge, pointing up */
+.hk-tooltip[data-placement-pref="bottom"]::before {
   left: 50%;
   translate: -50% 0;
   top: calc(-1 * var(--_tt-tail));
@@ -194,7 +200,7 @@
   border-bottom-color: var(--_tt-container-color);
 }
 @container anchored(fallback: flip-block) {
-  .hk-tooltip--anchor[data-placement-pref="bottom"]::before {
+  .hk-tooltip[data-placement-pref="bottom"]::before {
     top: auto;
     bottom: calc(-1 * var(--_tt-tail));
     border-top: var(--_tt-tail) solid var(--_tt-container-color);
@@ -202,7 +208,8 @@
   }
 }
 
-.hk-tooltip--anchor[data-placement-pref="left"]::before {
+/* pref=left: tooltip left of trigger → tail on right edge, pointing right */
+.hk-tooltip[data-placement-pref="left"]::before {
   top: 50%;
   translate: 0 -50%;
   right: calc(-1 * var(--_tt-tail));
@@ -210,7 +217,7 @@
   border-left-color: var(--_tt-container-color);
 }
 @container anchored(fallback: flip-inline) {
-  .hk-tooltip--anchor[data-placement-pref="left"]::before {
+  .hk-tooltip[data-placement-pref="left"]::before {
     right: auto;
     left: calc(-1 * var(--_tt-tail));
     border-right: var(--_tt-tail) solid var(--_tt-container-color);
@@ -218,7 +225,8 @@
   }
 }
 
-.hk-tooltip--anchor[data-placement-pref="right"]::before {
+/* pref=right: tail on left edge, pointing left */
+.hk-tooltip[data-placement-pref="right"]::before {
   top: 50%;
   translate: 0 -50%;
   left: calc(-1 * var(--_tt-tail));
@@ -226,65 +234,10 @@
   border-right-color: var(--_tt-container-color);
 }
 @container anchored(fallback: flip-inline) {
-  .hk-tooltip--anchor[data-placement-pref="right"]::before {
+  .hk-tooltip[data-placement-pref="right"]::before {
     left: auto;
     right: calc(-1 * var(--_tt-tail));
     border-left: var(--_tt-tail) solid var(--_tt-container-color);
     border-right: none;
   }
-}
-
-/* ── JS engine ([hkJsTooltip]) — tippy-style, works everywhere ─────────────
-   The manager computes left/top from getBoundingClientRect (gap included),
-   flips when the preferred side runs out of viewport, and re-positions on
-   scroll/resize while open. [data-placement] is the RESOLVED side, so tails
-   and entrance direction key off it directly — no container queries. */
-.hk-tooltip--js {
-  margin: 0; /* the gap is baked into the computed coordinates */
-}
-
-.hk-tooltip--js[data-placement="top"] {
-  animation-name: tt-in-up, tt-fade;
-  transform-origin: bottom;
-}
-.hk-tooltip--js[data-placement="bottom"] {
-  animation-name: tt-in-down, tt-fade;
-  transform-origin: top;
-}
-.hk-tooltip--js[data-placement="left"] {
-  animation-name: tt-in-left, tt-fade;
-  transform-origin: right;
-}
-.hk-tooltip--js[data-placement="right"] {
-  animation-name: tt-in-right, tt-fade;
-  transform-origin: left;
-}
-
-.hk-tooltip--js[data-placement="top"]::before {
-  left: 50%;
-  translate: -50% 0;
-  bottom: calc(-1 * var(--_tt-tail));
-  border-bottom: none;
-  border-top-color: var(--_tt-container-color);
-}
-.hk-tooltip--js[data-placement="bottom"]::before {
-  left: 50%;
-  translate: -50% 0;
-  top: calc(-1 * var(--_tt-tail));
-  border-top: none;
-  border-bottom-color: var(--_tt-container-color);
-}
-.hk-tooltip--js[data-placement="left"]::before {
-  top: 50%;
-  translate: 0 -50%;
-  right: calc(-1 * var(--_tt-tail));
-  border-right: none;
-  border-left-color: var(--_tt-container-color);
-}
-.hk-tooltip--js[data-placement="right"]::before {
-  top: 50%;
-  translate: 0 -50%;
-  left: calc(-1 * var(--_tt-tail));
-  border-left: none;
-  border-right-color: var(--_tt-container-color);
 }

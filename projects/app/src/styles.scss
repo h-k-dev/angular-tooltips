@@ -40,3 +40,10 @@ body {
   margin: 0;
   height: 100%;
 }
+
+.example-tooltip-trigger {
+  --anchor-name: --invoker;
+  --delay-start: 0.3ms;
+
+  interest-delay-start: var(--delay-start);
+}

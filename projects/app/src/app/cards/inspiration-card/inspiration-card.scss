@@ -2,3 +2,69 @@
 
 @include card-content;
 @include tag-tiles;
+
+:host {
+  --_bg: var(--mat-sys-inverse-surface);
+}
+
+.anchor-tooltips {
+  --anchor-name: --invoker;
+  --_size: 0.25rem;
+
+  container-type: anchored;
+
+  position: absolute;
+  position-anchor: var(--anchor-name);
+
+  inset: auto;
+  position-area: top;
+  position-try: flip-block;
+
+  /* Leave a --_size gap on both block sides: that strip between bubble and
+     button is where the arrow lives (flip-block mirrors it automatically). */
+  margin-block: var(--_size);
+
+  &::before {
+    --_test-border-color: red;
+
+    content: '';
+
+    /* `fixed` gives the pseudo the VIEWPORT as containing block — only then
+       is the invoker an "acceptable anchor element" for it (with `absolute`
+       the containing block is the bubble and anchor() resolves to nothing).
+       Empirically the anchor() INSET functions resolve here where
+       position-area on the pseudo does not — so the arrow is placed with
+       explicit insets against the invoker. */
+    position: fixed;
+    position-anchor: var(--anchor-name);
+
+    left: anchor(center);
+    translate: -50% 0;
+    bottom: anchor(top);
+
+    border: var(--_size) solid transparent;
+    border-bottom: none;
+    border-top-color: var(--_test-border-color);
+
+    @container anchored(fallback: flip-block) {
+      bottom: auto;
+      top: anchor(bottom);
+
+      border: var(--_size) solid transparent;
+      border-top: none;
+      border-bottom-color: var(--_test-border-color);
+    }
+  }
+}
+
+.stylized {
+  max-width: 40ch;
+
+  border: 0px solid;
+  border-radius: 8px;
+
+  background: var(--_bg);
+  color: var(--mat-sys-surface);
+
+  font: var(--mat-sys-body-medium);
+}

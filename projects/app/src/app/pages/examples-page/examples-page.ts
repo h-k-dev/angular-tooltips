@@ -1,28 +1,14 @@
 import { Component, inject, signal, DOCUMENT } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { supportsAnchorPositioning } from '../../../../../angular-tooltips/src/public-api';
-
 import { DenseGridCard } from '../../cards/dense-grid-card/dense-grid-card';
 import { PlacementsCard } from '../../cards/placements-card/placements-card';
-import { AnyElementCard } from '../../cards/any-element-card/any-element-card';
 import { RichContentCard } from '../../cards/rich-content-card/rich-content-card';
-import { JsPlaygroundCard } from '../../cards/js-playground-card/js-playground-card';
-import { EngineSplitCard } from '../../cards/engine-split-card/engine-split-card';
 import { ThemingCard } from '../../cards/theming-card/theming-card';
 
 @Component({
   selector: 'app-examples-page',
-  imports: [
-    RouterLink,
-    DenseGridCard,
-    PlacementsCard,
-    AnyElementCard,
-    RichContentCard,
-    JsPlaygroundCard,
-    EngineSplitCard,
-    ThemingCard,
-  ],
+  imports: [RouterLink, DenseGridCard, PlacementsCard, RichContentCard, ThemingCard],
   templateUrl: './examples-page.html',
   styleUrl: './examples-page.scss',
   host: {
@@ -31,21 +17,12 @@ import { ThemingCard } from '../../cards/theming-card/theming-card';
 })
 export class ExamplesPage {
   readonly #doc = inject(DOCUMENT);
-  // Strict engine split: the anchor cards render only where [hkTooltip] can
-  // construct; otherwise the JS playground takes their place.
-  protected readonly anchorSupported = supportsAnchorPositioning();
 
   // Floating fragment nav on the right, scoped to this page's cards.
   protected readonly fragments = [
-    ...(this.anchorSupported
-      ? [
-          { fragment: 'dense-grid', label: 'Dense grid' },
-          { fragment: 'placements', label: 'Placements' },
-          { fragment: 'any-element', label: 'Any element' },
-          { fragment: 'rich-content', label: 'Rich content' },
-        ]
-      : [{ fragment: 'js-playground', label: 'JS playground' }]),
-    { fragment: 'engine-split', label: 'Engine split' },
+    { fragment: 'dense-grid', label: 'Dense grid' },
+    { fragment: 'placements', label: 'Placements' },
+    { fragment: 'rich-content', label: 'Rich content' },
     { fragment: 'theming', label: 'Theming' },
   ];
 

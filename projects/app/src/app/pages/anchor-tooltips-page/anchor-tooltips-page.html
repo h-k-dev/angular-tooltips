@@ -1,1 +1,40 @@
-<p>anchor-tooltips-page works!</p>
+<header class="page-header">
+  <h1>Anchor Tooltips</h1>
+  <p>
+    Interest-native triggers, one singleton popover, component content stamped
+    lazily per show. Move between the two triggers and watch the lifecycle log:
+    the previous component is <em>destroyed</em> and the next one <em>created</em>
+    on every handoff — nothing leaks, and Beta's <code>resource()</code> only
+    fires while its view exists (cached, so re-shows resolve instantly).
+  </p>
+</header>
+
+<div class="tag-grid">
+  <button class="tag-item" [hkTooltip]="alpha" [hkTooltipHideDelay]="200">
+    Trigger A — sync component
+  </button>
+  <a class="tag-item" href="#" (click)="$event.preventDefault()" [hkTooltip]="beta"
+    [hkTooltipHideDelay]="200" hkTooltipPlacement="bottom">
+    Trigger B — async component
+  </a>
+</div>
+
+<ng-template #alpha>
+  <app-probe-alpha />
+</ng-template>
+<ng-template #beta>
+  <app-probe-beta />
+</ng-template>
+
+<section class="lifecycle-log">
+  <h2>Lifecycle log</h2>
+  @if (log.entries().length === 0) {
+  <p class="lifecycle-log__empty">Hover a trigger to start.</p>
+  } @else {
+  <ol>
+    @for (entry of log.entries(); track $index) {
+    <li>{{ entry }}</li>
+    }
+  </ol>
+  }
+</section>

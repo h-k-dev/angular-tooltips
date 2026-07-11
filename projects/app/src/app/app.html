@@ -6,7 +6,6 @@
   <div class="spacer"></div>
 
   <div class="toolbar__actions">
-    @if (anchorSupported) {
     <button mat-icon-button (click)="toggleTheme()" [hkTooltip]="'Toggle dark/light mode'">
       @if (theme() === 'dark') {
       <mat-icon>dark_mode</mat-icon>
@@ -19,19 +18,6 @@
       [hkTooltip]="'Open the sign-in dialog — tooltips escape into the top layer'" hkTooltipPlacement="bottom">
       <mat-icon>login</mat-icon> Login
     </button>
-
-    } @else {
-    <button mat-icon-button (click)="toggleTheme()" [hkJsTooltip]="'Toggle dark/light mode'">
-      @if (theme() === 'dark') {
-      <mat-icon>dark_mode</mat-icon>
-      } @else {
-      <mat-icon>light_mode</mat-icon>
-      }
-    </button>
-
-    <!-- The sign-in dialog demos anchor-engine tooltips internally, so it is
-         only reachable where [hkTooltip] can construct. -->
-    }
   </div>
 </mat-toolbar>
 
@@ -44,9 +30,6 @@
       </a>
       <a mat-button class="aside-nav__link" routerLink="/anchor-tooltips" routerLinkActive="aside-nav__link--active">
         Anchor Tooltips
-      </a>
-      <a mat-button class="aside-nav__link" routerLink="/js-tooltips" routerLinkActive="aside-nav__link--active">
-        JS Tooltips
       </a>
       <a mat-button class="aside-nav__link" routerLink="/examples" routerLinkActive="aside-nav__link--active">
         Examples

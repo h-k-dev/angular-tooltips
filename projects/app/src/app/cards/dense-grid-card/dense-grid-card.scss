@@ -9,6 +9,10 @@
 }
 
 .grid-cell {
+  // Interest invokers must be buttons — neutralise the native look.
+  appearance: none;
+  padding: 0;
+  font: inherit;
   background: var(--mat-sys-surface-container-low);
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 6px;

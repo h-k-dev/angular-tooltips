@@ -1,0 +1,36 @@
+@use '../../cards/card-base' as *;
+
+:host {
+  display: block;
+}
+
+@include page-header;
+@include tag-tiles;
+
+.lifecycle-log {
+  margin-top: 2rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  background: var(--mat-sys-surface);
+
+  h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+    color: var(--mat-sys-on-surface);
+  }
+
+  ol {
+    margin: 0;
+    padding-left: 1.25rem;
+    font: 0.85rem/1.7 monospace;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.lifecycle-log__empty {
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}

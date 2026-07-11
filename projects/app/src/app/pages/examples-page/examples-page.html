@@ -1,21 +1,16 @@
 <header class="page-header">
   <h1>Examples</h1>
   <p>
-    Every pattern MatTooltip struggles with, driven by the engine this browser
-    supports. Jump between cards with the floating navigation on the right.
+    Every pattern MatTooltip struggles with — triggered natively by Interest
+    Invokers, positioned entirely by CSS Anchor Positioning. Jump between
+    cards with the floating navigation on the right.
   </p>
 </header>
 
 <div class="playground-grid">
-  @if (anchorSupported) {
   <app-dense-grid-card id="dense-grid" />
   <app-placements-card id="placements" />
-  <app-any-element-card id="any-element" />
   <app-rich-content-card id="rich-content" />
-  } @else {
-  <app-js-playground-card id="js-playground" />
-  }
-  <app-engine-split-card id="engine-split" />
   <app-theming-card id="theming" />
 </div>
 
