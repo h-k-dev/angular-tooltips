@@ -327,6 +327,12 @@ the defaults give you the familiar dark M3 look. Override on `:root` (or any anc
 
 > Keep `--tt-tail-size` smaller than `--tt-gap`, so the tail never overlaps the trigger.
 
+The tail is anchored to the **trigger**, not to the bubble: when the bubble is shifted sideways
+at a viewport edge, the tail stays centred on the trigger. The entrance slide animates the
+gap margin rather than `transform` for the same reason (a transformed bubble would become the
+tail's containing block and break its `anchor()` insets), and it therefore follows
+position-try flips automatically.
+
 ## Browser support
 
 Requires [CSS Anchor Positioning](https://caniuse.com/css-anchor-positioning) (both engines)

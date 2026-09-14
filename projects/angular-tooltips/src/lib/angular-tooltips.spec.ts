@@ -247,9 +247,14 @@ describe('HkTooltip (invoker engine)', () => {
     expect(lifecycle.destroys).toBe(0);
     expect(tooltipEl().querySelector('.probe')).toBeTruthy();
 
+    const genA = tooltipEl().getAttribute('data-try-gen');
+    expect(genA).toMatch(/^[ab]$/);
+
     // Interest moves to the second trigger: A's component is destroyed,
-    // the anchor name moves, B's content renders.
+    // the anchor name moves, B's content renders, and the position-try
+    // generation flips so the browser forgets A's fallback side.
     gainInterest(link);
+    expect(tooltipEl().getAttribute('data-try-gen')).not.toBe(genA);
     expect(lifecycle.destroys).toBe(1);
     expect(tooltipEl().querySelector('.probe')).toBeNull();
     expect(tooltipEl().querySelector('.b-card')?.textContent).toBe('B content');

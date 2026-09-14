@@ -218,12 +218,19 @@ export class TooltipsManager {
 
   /** Move the one anchor name onto the trigger being shown. */
   #point(dir: HkTooltipTrigger): void {
+    const el = this.#tooltipEl!;
     if (this.#anchored !== dir.hostEl) {
       this.#unanchor();
       dir.hostEl.style.setProperty('anchor-name', INVOKER_ANCHOR);
       this.#anchored = dir.hostEl;
     }
-    this.#tooltipEl!.setAttribute('data-placement-pref', dir.placement());
+    el.setAttribute('data-placement-pref', dir.placement());
+    // Alternate the fallback "generation": the stylesheet maps it to an
+    // equivalent but different position-try-fallbacks value, which resets
+    // the browser's last-successful-fallback memory — otherwise a tooltip
+    // that flipped at a viewport edge would stay flipped on the next
+    // trigger even where the preferred side fits.
+    el.setAttribute('data-try-gen', el.getAttribute('data-try-gen') === 'a' ? 'b' : 'a');
     this.#active = dir;
   }
 

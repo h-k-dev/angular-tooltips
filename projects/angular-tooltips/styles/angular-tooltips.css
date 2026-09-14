@@ -11,8 +11,8 @@
    One singleton popover (.hk-tooltip), anchored via `--hk-invoker` — the
    manager moves that anchor NAME onto whichever trigger holds interest, so
    this sheet never changes at runtime. Placement, viewport flipping, tail
-   direction and hide-on-scroll-out are all browser CSS; there is no JS
-   positioning anywhere.
+   position and direction, and hide-on-scroll-out are all browser CSS;
+   there is no JS positioning anywhere.
 
    ── Why a one-shot keyframe entrance and no transitions (singleton!) ──
    A keyframe animation runs once when the element starts rendering (popover
@@ -102,7 +102,13 @@
   /* One-shot entrance; direction is set per placement below. Two layered
      animations: the directional slide gets the custom linear curve, the
      opacity fade a quick ease-out — the tooltip appears fast while the
-     motion is still settling. */
+     motion is still settling.
+
+     The slide animates the MARGIN on the anchor side, never transform:
+     a transformed bubble would become the containing block of its
+     fixed-positioned tail (below), which must stay anchored to the
+     trigger. Margins also travel with position-try flips, so a flipped
+     tooltip slides in from the right side for free. */
   animation:
     tt-in-up var(--_tt-enter-duration) linear(0, 0.68 24%, 0.86 48%, 0.95 72%, 1),
     tt-fade  var(--_tt-fade-duration) ease-out;
@@ -117,44 +123,58 @@
   position-area: top;
   position-try-fallbacks: flip-block;
   animation-name: tt-in-up, tt-fade;   /* animation-name overrides the list */
-  transform-origin: bottom;
 }
 .hk-tooltip[data-placement-pref="bottom"] {
   position-area: bottom;
   position-try-fallbacks: flip-block;
   animation-name: tt-in-down, tt-fade;
-  transform-origin: top;
 }
 .hk-tooltip[data-placement-pref="left"] {
   position-area: left;
   position-try-fallbacks: flip-inline;
   animation-name: tt-in-left, tt-fade;
-  transform-origin: right;
 }
 .hk-tooltip[data-placement-pref="right"] {
   position-area: right;
   position-try-fallbacks: flip-inline;
   animation-name: tt-in-right, tt-fade;
-  transform-origin: left;
 }
 
-/* Directional slides — transform only; opacity lives in tt-fade so the two
-   can run on different durations/easings. */
+/* Position-try remembers the LAST SUCCESSFUL fallback for as long as it
+   still fits — right for one element, wrong for a singleton re-pointed at
+   a new trigger: a tooltip flipped below the toolbar would stay below the
+   next trigger although it fits above. The manager alternates
+   [data-try-gen] on every re-point, and a CHANGED computed
+   position-try-fallbacks value (same tactic, listed twice) is what resets
+   that memory, so every trigger starts from its preferred side. */
+.hk-tooltip[data-try-gen="b"][data-placement-pref="top"],
+.hk-tooltip[data-try-gen="b"][data-placement-pref="bottom"] {
+  position-try-fallbacks: flip-block, flip-block;
+}
+.hk-tooltip[data-try-gen="b"][data-placement-pref="left"],
+.hk-tooltip[data-try-gen="b"][data-placement-pref="right"] {
+  position-try-fallbacks: flip-inline, flip-inline;
+}
+
+/* Directional slides — the bubble starts closer to the trigger (its gap
+   margin shrunk by the slide distance) and settles at the full gap.
+   Opacity lives in tt-fade so the two can run on different
+   durations/easings. */
 @keyframes tt-in-up {
-  from { transform: translateY(var(--_tt-slide-distance)); }
-  to   { transform: translateY(0); }
+  from { margin-bottom: calc(var(--_tt-gap) - var(--_tt-slide-distance)); }
+  to   { margin-bottom: var(--_tt-gap); }
 }
 @keyframes tt-in-down {
-  from { transform: translateY(calc(-1 * var(--_tt-slide-distance))); }
-  to   { transform: translateY(0); }
+  from { margin-top: calc(var(--_tt-gap) - var(--_tt-slide-distance)); }
+  to   { margin-top: var(--_tt-gap); }
 }
 @keyframes tt-in-left {
-  from { transform: translateX(var(--_tt-slide-distance)); }
-  to   { transform: translateX(0); }
+  from { margin-right: calc(var(--_tt-gap) - var(--_tt-slide-distance)); }
+  to   { margin-right: var(--_tt-gap); }
 }
 @keyframes tt-in-right {
-  from { transform: translateX(calc(-1 * var(--_tt-slide-distance))); }
-  to   { transform: translateX(0); }
+  from { margin-left: calc(var(--_tt-gap) - var(--_tt-slide-distance)); }
+  to   { margin-left: var(--_tt-gap); }
 }
 @keyframes tt-fade {
   from { opacity: 0; }
@@ -162,81 +182,92 @@
 }
 
 /* ── The tail ─────────────────────────────────────────────────────────────
-   Plain absolutely-positioned border triangle hanging off the bubble into
-   the gap, keyed off the PREFERRED side and flipped via anchored()
-   container queries when a position-try fallback fired. (A pseudo cannot
-   anchor() to the trigger itself: its containing block is the bubble, so
-   the trigger is not an acceptable anchor element for it.) */
+   A border triangle anchored to the TRIGGER, not to the bubble. Near a
+   viewport edge the bubble is shifted sideways by its anchor-center
+   alignment, so a tail placed at 50% of the bubble would stop pointing at
+   the trigger; anchoring the tail's own insets to the trigger keeps it on
+   target wherever the bubble ends up.
+
+   `position: fixed` is what makes this legal: it gives the pseudo the
+   viewport as containing block, and only then is the trigger an acceptable
+   anchor element for it (with `absolute` the containing block is the
+   bubble and anchor() resolves to nothing). The tail sits in the gap
+   between bubble and trigger, flush with the bubble's edge, and flips via
+   anchored() container queries when a position-try fallback fired. */
 
 .hk-tooltip::before {
   content: "";
-  position: absolute;
+  position: fixed;
+  position-anchor: --hk-invoker;
   border: var(--_tt-tail) solid transparent;
+  /* Distance from the trigger's edge to the tail's base: the gap minus
+     the tail itself, so the tail's base touches the bubble. */
+  --_tt-tail-inset: calc(var(--_tt-gap) - var(--_tt-tail));
 }
 
-/* pref=top: tooltip above trigger → tail on bottom edge, pointing down */
+/* pref=top: tooltip above trigger → tail under the bubble, pointing down */
 .hk-tooltip[data-placement-pref="top"]::before {
-  left: 50%;
+  left: anchor(center);
   translate: -50% 0;
-  bottom: calc(-1 * var(--_tt-tail));
+  bottom: calc(anchor(top) + var(--_tt-tail-inset));
   border-bottom: none;
   border-top-color: var(--_tt-container-color);
 }
 @container anchored(fallback: flip-block) {
   .hk-tooltip[data-placement-pref="top"]::before {
     bottom: auto;
-    top: calc(-1 * var(--_tt-tail));
+    top: calc(anchor(bottom) + var(--_tt-tail-inset));
     border-bottom: var(--_tt-tail) solid var(--_tt-container-color);
     border-top: none;
   }
 }
 
-/* pref=bottom: tail on top edge, pointing up */
+/* pref=bottom: tail above the bubble, pointing up */
 .hk-tooltip[data-placement-pref="bottom"]::before {
-  left: 50%;
+  left: anchor(center);
   translate: -50% 0;
-  top: calc(-1 * var(--_tt-tail));
+  top: calc(anchor(bottom) + var(--_tt-tail-inset));
   border-top: none;
   border-bottom-color: var(--_tt-container-color);
 }
 @container anchored(fallback: flip-block) {
   .hk-tooltip[data-placement-pref="bottom"]::before {
     top: auto;
-    bottom: calc(-1 * var(--_tt-tail));
+    bottom: calc(anchor(top) + var(--_tt-tail-inset));
     border-top: var(--_tt-tail) solid var(--_tt-container-color);
     border-bottom: none;
   }
 }
 
-/* pref=left: tooltip left of trigger → tail on right edge, pointing right */
+/* pref=left: tooltip left of trigger → tail right of the bubble, pointing right */
 .hk-tooltip[data-placement-pref="left"]::before {
-  top: 50%;
+  top: anchor(center);
   translate: 0 -50%;
-  right: calc(-1 * var(--_tt-tail));
+  right: calc(anchor(left) + var(--_tt-tail-inset));
   border-right: none;
   border-left-color: var(--_tt-container-color);
 }
 @container anchored(fallback: flip-inline) {
   .hk-tooltip[data-placement-pref="left"]::before {
     right: auto;
-    left: calc(-1 * var(--_tt-tail));
+    left: calc(anchor(right) + var(--_tt-tail-inset));
     border-right: var(--_tt-tail) solid var(--_tt-container-color);
     border-left: none;
   }
 }
 
-/* pref=right: tail on left edge, pointing left */
+/* pref=right: tail left of the bubble, pointing left */
 .hk-tooltip[data-placement-pref="right"]::before {
-  top: 50%;
+  top: anchor(center);
   translate: 0 -50%;
-  left: calc(-1 * var(--_tt-tail));
+  left: calc(anchor(right) + var(--_tt-tail-inset));
   border-left: none;
   border-right-color: var(--_tt-container-color);
 }
 @container anchored(fallback: flip-inline) {
   .hk-tooltip[data-placement-pref="right"]::before {
     left: auto;
-    right: calc(-1 * var(--_tt-tail));
+    right: calc(anchor(left) + var(--_tt-tail-inset));
     border-left: var(--_tt-tail) solid var(--_tt-container-color);
     border-right: none;
   }
