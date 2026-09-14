@@ -5,25 +5,23 @@ import { DenseGridCard } from '../../cards/dense-grid-card/dense-grid-card';
 import { EngineHandoffCard } from '../../cards/engine-handoff-card/engine-handoff-card';
 import { PlacementsCard } from '../../cards/placements-card/placements-card';
 import { RichContentCard } from '../../cards/rich-content-card/rich-content-card';
-import { ThemingCard } from '../../cards/theming-card/theming-card';
 
 @Component({
-  selector: 'app-both-page',
+  selector: 'app-tooltips-page',
   imports: [
     RouterLink,
     EngineHandoffCard,
     DenseGridCard,
     PlacementsCard,
     RichContentCard,
-    ThemingCard,
   ],
-  templateUrl: './both-page.html',
-  styleUrl: './both-page.scss',
+  templateUrl: './tooltips-page.html',
+  styleUrl: './tooltips-page.scss',
   host: {
     '(window:scroll)': 'onScroll()',
   },
 })
-export class BothPage {
+export class TooltipsPage {
   readonly #doc = inject(DOCUMENT);
 
   // Floating fragment nav on the right, scoped to this page's cards.
@@ -32,7 +30,6 @@ export class BothPage {
     { fragment: 'dense-grid', label: 'Dense grid' },
     { fragment: 'placements', label: 'Placements' },
     { fragment: 'rich-content', label: 'Rich content' },
-    { fragment: 'theming', label: 'Theming' },
   ];
 
   /** Collapsed = only the active fragment stays visible (scrolling down). */

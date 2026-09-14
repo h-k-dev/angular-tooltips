@@ -1,0 +1,52 @@
+@use '../../cards/card-base' as *;
+
+:host {
+  display: block;
+}
+
+@include page-header;
+@include var-table;
+
+.page-header code,
+.api-section p code {
+  font-size: 0.9em;
+}
+
+.api-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  font: var(--mat-sys-label-large);
+
+  a {
+    color: var(--mat-sys-primary);
+  }
+}
+
+.api-section {
+  margin-top: 2.5rem;
+  scroll-margin-top: 16px;
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+    color: var(--mat-sys-on-surface);
+  }
+
+  p {
+    margin: 0 0 1rem;
+    max-width: 75ch;
+    line-height: 1.6;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  app-code-block {
+    margin-bottom: 1rem;
+  }
+}
+
+// Long union/signature types wrap instead of forcing a very wide table.
+.var-table code.api-type {
+  white-space: normal;
+}

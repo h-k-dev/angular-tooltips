@@ -1,0 +1,29 @@
+<header class="page-header">
+  <h1>Tooltips</h1>
+  <p>
+    One singleton popover, positioned entirely by CSS Anchor Positioning. Triggered by the
+    browser's Interest Invokers wherever the host supports them
+    (<a routerLink="/invoker">Invoker</a>) and by a tippy-style JS engine everywhere else
+    (<a routerLink="/js-anchor">JS Anchor</a>) — with the same API, blending into one
+    continuous tooltip when they meet. Every pattern MatTooltip struggles with is below;
+    jump between cards with the floating navigation on the right. Styling lives on
+    <a routerLink="/theming">Theming</a>, every input and method on
+    <a routerLink="/api">API</a>, and where it all started on
+    <a routerLink="/inspiration">Inspiration</a>.
+  </p>
+</header>
+
+<div class="playground-grid">
+  <app-engine-handoff-card id="handoff" />
+  <app-dense-grid-card id="dense-grid" />
+  <app-placements-card id="placements" />
+  <app-rich-content-card id="rich-content" />
+</div>
+
+<nav class="float-nav" [class.float-nav--collapsed]="collapsed()" aria-label="Examples on this page">
+  <span class="float-nav__title">On this page</span>
+  @for (link of fragments; track link.fragment) {
+  <a class="float-nav__link" [class.float-nav__link--active]="activeFragment() === link.fragment"
+    [routerLink]="[]" [fragment]="link.fragment">{{ link.label }}</a>
+  }
+</nav>

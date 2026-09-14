@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   inject,
   DOCUMENT,
 
@@ -20,6 +21,13 @@ import { Dialog } from './dialog/dialog';
 
 // Angular Tooltips (toolbar triggers)
 import { HkTooltip } from '../../../angular-tooltips/src/public-api';
+
+type Theme = 'light' | 'dark';
+
+/** localStorage key for the user's explicit theme choice. */
+export const THEME_STORAGE_KEY = 'hk-theme';
+
+const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 @Component({
   selector: '[app-root]',
@@ -46,22 +54,34 @@ import { HkTooltip } from '../../../angular-tooltips/src/public-api';
 })
 export class App {
   #document = inject(DOCUMENT);
-  protected readonly title = signal('app');
   #matDialog = inject(MatDialog);
 
-  theme = signal<'light' | 'dark'>('light');
-  themeClass = computed(() => `${this.theme()}-mode`);
+  /**
+   * An explicit choice saved in localStorage wins; otherwise the OS
+   * preference, followed live until the user picks a theme themselves.
+   */
+  readonly theme = signal<Theme>(this.#readStoredTheme() ?? this.#systemTheme());
+  readonly themeClass = computed(() => `${this.theme()}-mode`);
+
+  constructor() {
+    const media = this.#document.defaultView?.matchMedia?.(DARK_QUERY);
+    if (!media) return;
+    const followSystem = (event: MediaQueryListEvent) => {
+      if (this.#readStoredTheme() === null) this.theme.set(event.matches ? 'dark' : 'light');
+    };
+    media.addEventListener('change', followSystem);
+    inject(DestroyRef).onDestroy(() => media.removeEventListener('change', followSystem));
+  }
 
   toggleTheme() {
-    if (this.#document.startViewTransition) {
-      this.#document.startViewTransition(() => {
-        this.theme.update((theme) => (theme === 'light' ? 'dark' : 'light'));
-      });
+    const next: Theme = this.theme() === 'light' ? 'dark' : 'light';
+    this.#storeTheme(next);
 
+    if (this.#document.startViewTransition) {
+      this.#document.startViewTransition(() => this.theme.set(next));
       return;
     }
-
-    this.theme.update((theme) => (theme === 'light' ? 'dark' : 'light'));
+    this.theme.set(next);
   }
 
   openLogin() {
@@ -69,5 +89,28 @@ export class App {
       width: '480px',
       maxHeight: '80vh',
     });
+  }
+
+  #systemTheme(): Theme {
+    return this.#document.defaultView?.matchMedia?.(DARK_QUERY).matches ? 'dark' : 'light';
+  }
+
+  // Storage can be unavailable or throw (private mode, blocked site data):
+  // the theme then simply isn't remembered.
+  #readStoredTheme(): Theme | null {
+    try {
+      const value = this.#document.defaultView?.localStorage.getItem(THEME_STORAGE_KEY);
+      return value === 'light' || value === 'dark' ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  #storeTheme(theme: Theme): void {
+    try {
+      this.#document.defaultView?.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Not persisted — the in-memory theme still applies.
+    }
   }
 }

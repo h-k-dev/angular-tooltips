@@ -4,8 +4,9 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    title: 'Angular Tooltips — Home',
-    loadComponent: () => import('./pages/home-page/home-page').then((m) => m.HomePage),
+    title: 'Angular Tooltips',
+    loadComponent: () =>
+      import('./pages/tooltips-page/tooltips-page').then((m) => m.TooltipsPage),
   },
   {
     path: 'invoker',
@@ -19,11 +20,24 @@ export const routes: Routes = [
       import('./pages/js-anchor-page/js-anchor-page').then((m) => m.JsAnchorPage),
   },
   {
-    path: 'both',
-    title: 'Angular Tooltips — Both',
-    loadComponent: () => import('./pages/both-page/both-page').then((m) => m.BothPage),
+    path: 'theming',
+    title: 'Angular Tooltips — Theming',
+    loadComponent: () =>
+      import('./pages/theming-page/theming-page').then((m) => m.ThemingPage),
+  },
+  {
+    path: 'api',
+    title: 'Angular Tooltips — API',
+    loadComponent: () => import('./pages/api-page/api-page').then((m) => m.ApiPage),
+  },
+  {
+    path: 'inspiration',
+    title: 'Angular Tooltips — Inspiration',
+    loadComponent: () =>
+      import('./pages/inspiration-page/inspiration-page').then((m) => m.InspirationPage),
   },
   // Old demo URLs.
+  { path: 'both', redirectTo: '' },
+  { path: 'examples', redirectTo: '' },
   { path: 'anchor-tooltips', redirectTo: 'invoker' },
-  { path: 'examples', redirectTo: 'both' },
 ];

@@ -53,6 +53,11 @@
               {
                 "glob": "**/*",
                 "input": "projects/app/public"
+              },
+              {
+                "glob": "inspiration-card.{html,scss}",
+                "input": "projects/app/src/app/cards/inspiration-card",
+                "output": "source"
               }
             ],
             "styles": [

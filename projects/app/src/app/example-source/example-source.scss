@@ -1,0 +1,66 @@
+:host {
+  display: block;
+}
+
+.example-source__bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+// Pill switcher: Preview / HTML / TS / SCSS. Scrolls sideways on narrow screens.
+.example-source__tabs {
+  display: flex;
+  gap: 0.25rem;
+  min-inline-size: 0;
+  overflow-x: auto;
+  padding: 0.25rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 100vw;
+}
+
+.example-source__tab {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.85rem;
+  border: none;
+  border-radius: 100vw;
+  background: transparent;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--mat-sys-on-surface-variant) 8%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  &[aria-selected='true'] {
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-secondary-container);
+  }
+}
+
+// Code pane: the pre/span styling is global (styles.scss) — innerHTML content
+// carries no _ngcontent attribute, so scoped rules cannot reach it.
+.example-source__code {
+  max-block-size: 70vh;
+  overflow: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
+.example-source__status {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

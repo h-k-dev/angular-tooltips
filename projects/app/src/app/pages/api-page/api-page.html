@@ -1,0 +1,125 @@
+<header class="page-header">
+  <h1>API</h1>
+  <p>
+    Two directives, one interface. Pick the directive by host — <code>hkTooltip</code> for
+    elements that can be interest invokers, <code>hkJsTooltip</code> for everything else — and
+    everything after that is identical: the same inputs, the same methods, the same singleton.
+    See it live on <a routerLink="/">Tooltips</a>.
+  </p>
+  <nav class="api-toc" aria-label="API sections">
+    @for (section of sections; track section.id) {
+      <a [routerLink]="[]" [fragment]="section.id">{{ section.label }}</a>
+    }
+  </nav>
+</header>
+
+<app-code-block [code]="usage" lang="angular-ts" />
+
+<section id="directives" class="api-section" aria-labelledby="directives-title">
+  <h2 id="directives-title">Directives</h2>
+  <div class="var-table-wrap">
+    <table class="var-table">
+      <thead>
+        <tr>
+          <th scope="col">Selector</th>
+          <th scope="col">Class</th>
+          <th scope="col">Engine</th>
+          <th scope="col">exportAs</th>
+          <th scope="col">Hosts</th>
+          <th scope="col">Throws at construction</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of directives; track d.selector) {
+          <tr>
+            <td><code>{{ d.selector }}</code></td>
+            <td><code>{{ d.className }}</code></td>
+            <td><code>{{ d.engine }}</code></td>
+            <td><code>{{ d.exportAs }}</code></td>
+            <td>{{ d.hosts }}</td>
+            <td>{{ d.throws }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="inputs" class="api-section" aria-labelledby="inputs-title">
+  <h2 id="inputs-title">Inputs</h2>
+  <p>Identical on both directives, except for the content input, which is named after the selector.</p>
+  <ng-container *ngTemplateOutlet="rows; context: { $implicit: inputs, defaultLabel: 'Default' }" />
+</section>
+
+<section id="methods" class="api-section" aria-labelledby="methods-title">
+  <h2 id="methods-title">Methods &amp; properties</h2>
+  <p>
+    Reach them with a template reference — <code>#tip="hkTooltip"</code> or
+    <code>#tip="hkJsTooltip"</code> — or a <code>viewChild</code> typed as
+    <code>HkTooltipTrigger</code>.
+  </p>
+  <ng-container *ngTemplateOutlet="rows; context: { $implicit: members, defaultLabel: 'Default delay' }" />
+</section>
+
+<section id="types" class="api-section" aria-labelledby="types-title">
+  <h2 id="types-title">Types</h2>
+  <app-code-block [code]="triggerInterface" lang="angular-ts" />
+  <ng-container *ngTemplateOutlet="rows; context: { $implicit: types }" />
+</section>
+
+<section id="functions" class="api-section" aria-labelledby="functions-title">
+  <h2 id="functions-title">Functions &amp; constants</h2>
+  <p>Use the platform checks to gate rendering in apps that must also load outside Chromium.</p>
+  <ng-container *ngTemplateOutlet="rows; context: { $implicit: functions }" />
+</section>
+
+<section id="cache" class="api-section" aria-labelledby="cache-title">
+  <h2 id="cache-title">HkTooltipCache</h2>
+  <p>
+    Root-provided TTL + LRU cache for async tooltip content, meant for a <code>resource()</code>
+    loader inside a template. The promise is cached, so concurrent hovers share one request.
+    Add it to a component's <code>providers</code> to scope its lifetime to that component.
+  </p>
+  <ng-container *ngTemplateOutlet="rows; context: { $implicit: cache, defaultLabel: 'Defaults' }" />
+</section>
+
+<ng-template #rows let-rows let-defaultLabel="defaultLabel">
+  <div class="var-table-wrap">
+    <table class="var-table">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Type</th>
+          @if (defaultLabel) {
+            <th scope="col">{{ defaultLabel }}</th>
+          }
+          <th scope="col">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows; track row.name) {
+          <tr>
+            <td><code>{{ row.name }}</code></td>
+            <td>
+              @if (row.type) {
+                <code class="api-type">{{ row.type }}</code>
+              } @else {
+                <span class="no-fallback">—</span>
+              }
+            </td>
+            @if (defaultLabel) {
+              <td>
+                @if (row.default) {
+                  <code>{{ row.default }}</code>
+                } @else {
+                  <span class="no-fallback">—</span>
+                }
+              </td>
+            }
+            <td>{{ row.description }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</ng-template>

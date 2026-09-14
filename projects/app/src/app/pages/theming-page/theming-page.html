@@ -1,0 +1,49 @@
+<header class="page-header">
+  <h1>Theming</h1>
+  <p>
+    The singleton is styled only through <code>--tt-*</code> custom properties set on
+    <code>:root</code> (or any ancestor of <code>&lt;body&gt;</code>). Anything you leave unset
+    falls back to the Angular Material tooltip tokens, then the <code>--mat-sys-*</code> system
+    tokens, then a built-in default — with a Material theme present the tooltip matches it
+    out of the box. Both engines render the same popover, so one theme covers both.
+  </p>
+</header>
+
+<div class="playground-grid">
+  <section class="test-card full-width-card" aria-labelledby="theming-live-title">
+    <h2 id="theming-live-title">Live preview</h2>
+    <p>
+      Pick a preset: it is applied to <code>:root</code> while this page is open. Hover the
+      triggers (solid tiles are invoker triggers, dashed tiles JS triggers) — the toolbar
+      tooltips follow too.
+    </p>
+
+    <div class="preset-row" role="radiogroup" aria-label="Theme preset">
+      @for (option of presets; track option.id) {
+        <label class="preset" [class.preset--selected]="preset() === option">
+          <input type="radio" name="tt-preset" [checked]="preset() === option"
+            (change)="preset.set(option)" />
+          {{ option.label }}
+        </label>
+      }
+    </div>
+
+    <div class="preview-grid">
+      <div class="trigger-row">
+        <button class="tag-item" hkTooltip="Placement: top">top</button>
+        <button class="tag-item" hkTooltip="Placement: bottom" hkTooltipPlacement="bottom">bottom</button>
+        <button class="tag-item" hkTooltip="Placement: left" hkTooltipPlacement="left">left</button>
+        <button class="tag-item" hkTooltip="Placement: right" hkTooltipPlacement="right">right</button>
+        <span class="tag-item tag-item--js" tabindex="0"
+          hkJsTooltip="A longer tooltip wraps at --tt-max-width, so the bubble never runs across the whole page however much text it carries."
+          hkTooltipPlacement="bottom">
+          long text
+        </span>
+      </div>
+
+      <app-code-block class="preview-css" lang="css" [code]="css()" />
+    </div>
+  </section>
+
+  <app-theming-card />
+</div>

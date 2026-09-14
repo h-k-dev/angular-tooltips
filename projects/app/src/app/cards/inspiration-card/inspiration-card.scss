@@ -7,6 +7,15 @@
   --_bg: var(--mat-sys-inverse-surface);
 }
 
+// Host class of the AnchorTooltips directive (moved here from the global
+// stylesheet so the whole example is readable in its own source tabs).
+.example-tooltip-trigger {
+  --anchor-name: --invoker;
+  --delay-start: 0.3ms;
+
+  interest-delay-start: var(--delay-start);
+}
+
 .anchor-tooltips {
   --anchor-name: --invoker;
   --_size: 0.25rem;

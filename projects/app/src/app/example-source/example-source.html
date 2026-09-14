@@ -1,0 +1,49 @@
+<div class="example-source__bar">
+  <div class="example-source__tabs" role="tablist" [attr.aria-label]="label()">
+    @for (tab of tabs(); track tab.id; let i = $index) {
+      <button
+        #tabButton
+        type="button"
+        role="tab"
+        class="example-source__tab"
+        [id]="tabId(tab)"
+        [attr.aria-selected]="active() === tab.id"
+        [attr.aria-controls]="!tab.file || active() === tab.id ? panelId(tab) : null"
+        [tabIndex]="active() === tab.id ? 0 : -1"
+        (click)="select(tab)"
+        (keydown)="onKeydown($event, i)"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+</div>
+
+<!-- The live example stays mounted while code is shown. -->
+<div
+  role="tabpanel"
+  class="example-source__preview"
+  [id]="previewPanelId"
+  [attr.aria-labelledby]="tabId(tabs()[0])"
+  [hidden]="activeFile() !== undefined"
+>
+  <ng-content />
+</div>
+
+@if (activeFile(); as file) {
+  <div
+    role="tabpanel"
+    class="example-source__code"
+    tabindex="0"
+    [id]="codePanelId"
+    [attr.aria-labelledby]="tabId(activeTab())"
+  >
+    @if (code.hasValue()) {
+      <div class="demo-code" [innerHTML]="code.value()"></div>
+    } @else if (code.error()) {
+      <p class="example-source__status">Could not load {{ file.file }}.</p>
+    } @else {
+      <p class="example-source__status">Loading {{ file.file }}…</p>
+    }
+  </div>
+}

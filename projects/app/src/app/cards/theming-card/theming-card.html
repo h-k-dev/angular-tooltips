@@ -1,18 +1,16 @@
-<h2>Theming variables</h2>
+<h2>Variables</h2>
 <p>
-  Set any <code>--tt-*</code> variable on <code>:root</code> to theme the tooltip.
-  Unset variables fall back to the Angular Material tooltip tokens, then the
-  <code>--mat-sys-*</code> system tokens, then the built-in default — so the tooltip
-  matches your Material theme out of the box.
+  Each variable resolves left to right: your <code>--tt-*</code> value, then the Material
+  tooltip token, then the Material system token, then the default.
 </p>
 <div class="var-table-wrap">
   <table class="var-table">
     <thead>
       <tr>
-        <th>Variable</th>
-        <th>Purpose</th>
-        <th>Material fallback</th>
-        <th>Default</th>
+        <th scope="col">Variable</th>
+        <th scope="col">Purpose</th>
+        <th scope="col">Material fallback</th>
+        <th scope="col">Default</th>
       </tr>
     </thead>
     <tbody>
