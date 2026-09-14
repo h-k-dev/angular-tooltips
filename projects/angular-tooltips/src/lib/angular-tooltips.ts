@@ -2,17 +2,22 @@ import {
   inject,
   Injectable,
   Directive,
-  input,
-  effect,
-  untracked,
-  booleanAttribute,
-  numberAttribute,
+  DOCUMENT,
   ElementRef,
   ApplicationRef,
   DestroyRef,
   TemplateRef,
   EmbeddedViewRef,
-  DOCUMENT,
+
+  // Signal
+  input,
+  signal,
+  computed,
+  effect,
+  untracked,
+  debounced,
+  booleanAttribute,
+  numberAttribute,
   Signal,
   InputSignal,
 } from '@angular/core';
@@ -57,11 +62,15 @@ export interface HkTooltipTrigger {
   readonly hideDelay: Signal<number>;
   readonly disabled: Signal<boolean>;
 
+  /** Whether the singleton is currently open for this trigger — reactive. */
+  readonly visible: Signal<boolean>;
+
   /** Show after `delay` ms (default: `showDelay`). */
   show(delay?: number): void;
   /** Hide after `delay` ms (default: `hideDelay`). */
   hide(delay?: number): void;
   toggle(): void;
+  /** Snapshot of `visible()`. */
   isVisible(): boolean;
 }
 
@@ -80,8 +89,7 @@ export function supportsAnchorPositioning(): boolean {
  */
 export function supportsInterestInvokers(): boolean {
   return (
-    typeof HTMLAnchorElement !== 'undefined' &&
-    'interestForElement' in HTMLAnchorElement.prototype
+    typeof HTMLAnchorElement !== 'undefined' && 'interestForElement' in HTMLAnchorElement.prototype
   );
 }
 
@@ -148,9 +156,26 @@ function assertPlatform(directive: string): void {
 @Injectable({ providedIn: 'root' })
 export class TooltipsManager {
   #tooltipEl: HTMLElement | null = null;
-  #active: HkTooltipTrigger | null = null;
+  readonly #active = signal<HkTooltipTrigger | null>(null);
+  readonly #open = signal(false);
+
+  /** The trigger currently shown (null when the popover is closed). */
+  readonly active = this.#active.asReadonly();
+
+  /** Whether the singleton popover is open. */
+  readonly open = this.#open.asReadonly();
+
+  /** What the popover currently shows — the live-refresh effect's baseline. */
+  #rendered: {
+    dir: HkTooltipTrigger;
+    content: HkTooltipContent;
+    data: unknown;
+    placement: TooltipPlacement;
+  } | null = null;
+
   /** The host currently carrying the anchor name (may outlive #active by a tick). */
   #anchored: HTMLElement | null = null;
+
   /** Trigger the browser closed over while it was still engaged — reopen ASAP. */
   #pendingReopen: HkTooltipTrigger | null = null;
   #activeView: EmbeddedViewRef<HkTooltipContext> | null = null;
@@ -159,6 +184,34 @@ export class TooltipsManager {
 
   readonly #doc = inject(DOCUMENT);
   readonly #appRef = inject(ApplicationRef);
+
+  constructor() {
+    // ONE live-refresh effect for whichever trigger is shown (instead of one
+    // per directive instance): content, data, placement or disabled changing
+    // while open re-renders in place — or hides when disabled. The baseline
+    // set by #point keeps a fresh show from rendering twice.
+    effect(() => {
+      const dir = this.#active();
+      if (!dir) return;
+      const content = dir.content();
+      const data = dir.data();
+      const placement = dir.placement();
+      const disabled = dir.disabled();
+      untracked(() => {
+        const r = this.#rendered;
+        if (
+          !disabled &&
+          r?.dir === dir &&
+          r.content === content &&
+          r.data === data &&
+          r.placement === placement
+        ) {
+          return;
+        }
+        this.refresh(dir);
+      });
+    });
+  }
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -172,7 +225,7 @@ export class TooltipsManager {
     this.#registry.delete(dir.hostEl);
     // Never leave the singleton anchored to a removed element, or an
     // embedded view alive past its declaring component.
-    if (this.#active === dir) this.#hide();
+    if (this.#active() === dir) this.#hide();
     else if (this.#anchored === dir.hostEl) this.#unanchor();
   }
 
@@ -186,22 +239,23 @@ export class TooltipsManager {
     if (!this.#registry.has(dir.hostEl) || !this.#showable(dir)) return;
     const el = this.#tooltipEl!;
 
-    if (this.#active === dir && el.matches(':popover-open')) return;
+    if (this.#active() === dir && el.matches(':popover-open')) return;
 
     this.#render(dir);
     this.#point(dir);
 
     if (!el.matches(':popover-open')) el.showPopover();
+    this.#open.set(true);
   }
 
   /** Hide — only if `dir` is the trigger currently shown. */
   hide(dir: HkTooltipTrigger): void {
-    if (this.#active === dir) this.#hide();
+    if (this.#active() === dir) this.#hide();
   }
 
   /** Re-render content and placement of the active trigger in place. */
   refresh(dir: HkTooltipTrigger): void {
-    if (this.#active !== dir || !this.#tooltipEl?.matches(':popover-open')) return;
+    if (this.#active() !== dir || !this.#tooltipEl?.matches(':popover-open')) return;
     if (!this.#showable(dir)) {
       this.#hide();
       return;
@@ -211,7 +265,7 @@ export class TooltipsManager {
   }
 
   isVisible(dir: HkTooltipTrigger): boolean {
-    return this.#active === dir && (this.#tooltipEl?.matches(':popover-open') ?? false);
+    return this.#active() === dir && this.#open();
   }
 
   // ── Anchoring ──────────────────────────────────────────────────────────────
@@ -232,7 +286,13 @@ export class TooltipsManager {
     // trigger even where the preferred side fits.
     el.setAttribute('data-try-gen', el.getAttribute('data-try-gen') === 'a' ? 'b' : 'a');
     this.#describe(dir);
-    this.#active = dir;
+    this.#rendered = {
+      dir,
+      content: dir.content(),
+      data: dir.data(),
+      placement: dir.placement(),
+    };
+    this.#active.set(dir);
   }
 
   #unanchor(): void {
@@ -322,9 +382,11 @@ export class TooltipsManager {
   }
 
   #hide(): void {
-    this.#active = null;
+    this.#active.set(null);
+    this.#rendered = null;
     this.#pendingReopen = null;
     if (this.#tooltipEl?.matches(':popover-open')) this.#tooltipEl.hidePopover();
+    this.#open.set(false);
     this.#destroyView();
     this.#unanchor();
   }
@@ -335,9 +397,10 @@ export class TooltipsManager {
     if (!dir) return;
     this.#pendingReopen = null;
     const el = this.#tooltipEl!;
-    if (this.#active !== dir || el.matches(':popover-open')) return;
+    if (this.#active() !== dir || el.matches(':popover-open')) return;
     el.style.animation = 'none';
     el.showPopover();
+    this.#open.set(true);
   }
 
   // ── Init ───────────────────────────────────────────────────────────────────
@@ -385,7 +448,7 @@ export class TooltipsManager {
     el.addEventListener('loseinterest', (e: Event) => {
       const src = (e as Event & { source?: Element }).source ?? null;
       const dir = src instanceof HTMLElement ? this.#registry.get(src) : undefined;
-      const active = this.#active;
+      const active = this.#active();
 
       // Stale + engaged: do nothing ourselves. The browser will clear its
       // interest state and hide the popover on its own schedule (sync or a
@@ -414,7 +477,7 @@ export class TooltipsManager {
     // reopen, and both run before anything is painted.
     el.addEventListener('beforetoggle', (e: Event) => {
       if ((e as ToggleEvent).newState !== 'closed') return;
-      const active = this.#active;
+      const active = this.#active();
       if (!active || !this.#isEngaged(active)) return;
       this.#pendingReopen = active;
       const win = this.#doc.defaultView;
@@ -427,10 +490,15 @@ export class TooltipsManager {
     // popover was re-opened before this async event fired — never tear
     // down a view that a newer show() just stamped.
     el.addEventListener('toggle', (e: Event) => {
-      if ((e as ToggleEvent).newState !== 'closed') return;
+      if ((e as ToggleEvent).newState !== 'closed') {
+        this.#open.set(true);
+        return;
+      }
       this.#reopenIfPending();
       if (el.matches(':popover-open')) return;
-      this.#active = null;
+      this.#active.set(null);
+      this.#rendered = null;
+      this.#open.set(false);
       this.#destroyView();
       this.#unanchor();
       // If a seamless reopen suppressed the entrance animation, restore it
@@ -443,16 +511,19 @@ export class TooltipsManager {
     // hovering the popover sustains it; Escape and a pointerdown outside
     // the trigger + popover dismiss it.
     el.addEventListener('pointerenter', () => {
-      if (this.#active?.engine === 'js') this.#active.show(0);
+      const active = this.#active();
+      if (active?.engine === 'js') active.show(0);
     });
     el.addEventListener('pointerleave', () => {
-      if (this.#active?.engine === 'js') this.#active.hide();
+      const active = this.#active();
+      if (active?.engine === 'js') active.hide();
     });
     this.#doc.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && this.#active?.engine === 'js') this.#active.hide(0);
+      const active = this.#active();
+      if (e.key === 'Escape' && active?.engine === 'js') active.hide(0);
     });
     this.#doc.addEventListener('pointerdown', (e: PointerEvent) => {
-      const active = this.#active;
+      const active = this.#active();
       if (active?.engine !== 'js') return;
       const target = e.target as Node | null;
       if (target && (active.hostEl.contains(target) || el.contains(target))) return;
@@ -467,9 +538,28 @@ export class TooltipsManager {
 // ─── HkTooltipBase — the shared, MatTooltip-shaped API ──────────────────────
 // Everything both engines have in common lives here: the inputs (identical
 // names on both directives), the programmatic show/hide/toggle with their
-// delays, registration, and a live refresh while open. Concrete directives
-// add only their engine, their content input alias, and (JS) their
-// listeners.
+// delays, `visible`, and registration. Concrete directives add only their
+// engine, their content input alias, and (JS) their listeners.
+//
+// Delays are declarative: show()/hide() record a REQUEST signal; a
+// `debounced()` resource trails it by the request's delay (a newer request
+// cancels a pending one — a pointer that leaves and comes back inside the
+// hide delay never closes the tooltip), and one effect applies whatever
+// settles to the manager. No timers to clear, nothing to leak on destroy.
+//
+// Zero-delay requests are ALSO applied synchronously: an invoker → JS
+// handoff must re-point the singleton before the invoker's
+// interest-delay-end fires, and a scheduler tick is not a bounded wait.
+// The effect then sees the same request and finds nothing left to do.
+
+interface TooltipRequest {
+  readonly shown: boolean;
+  readonly delay: number;
+  /** Every call is a new request — even show() while shown re-asserts. */
+  readonly seq: number;
+}
+
+let requestSeq = 0;
 
 @Directive()
 export abstract class HkTooltipBase implements HkTooltipTrigger {
@@ -487,65 +577,49 @@ export abstract class HkTooltipBase implements HkTooltipTrigger {
   readonly hideDelay = input(80, { alias: 'hkTooltipHideDelay', transform: numberAttribute });
   readonly disabled = input(false, { alias: 'hkTooltipDisabled', transform: booleanAttribute });
 
-  #showTimer: ReturnType<typeof setTimeout> | null = null;
-  #hideTimer: ReturnType<typeof setTimeout> | null = null;
+  readonly visible: Signal<boolean> = computed(
+    () => this.manager.active() === this && this.manager.open(),
+  );
+
+  readonly #request = signal<TooltipRequest | null>(null);
+  readonly #settled = debounced(
+    () => this.#request(),
+    (request) =>
+      request && request.delay > 0
+        ? new Promise<void>((resolve) => setTimeout(resolve, request.delay))
+        : undefined,
+  );
 
   constructor() {
     this.manager.register(this);
 
-    // Keep an OPEN tooltip live: content, data, placement or disabled
-    // changing while shown re-renders in place (or hides when disabled).
     effect(() => {
-      this.content();
-      this.data();
-      this.placement();
-      this.disabled();
-      untracked(() => this.manager.refresh(this));
+      if (!this.#settled.hasValue()) return;
+      const request = this.#settled.value();
+      if (!request) return;
+      untracked(() => (request.shown ? this.manager.show(this) : this.manager.hide(this)));
     });
 
-    inject(DestroyRef).onDestroy(() => {
-      this.#clearTimers();
-      this.manager.unregister(this);
-    });
+    inject(DestroyRef).onDestroy(() => this.manager.unregister(this));
   }
 
   show(delay: number = this.showDelay()): void {
-    this.#clearTimers();
-    if (delay <= 0) {
-      this.manager.show(this);
-      return;
-    }
-    this.#showTimer = setTimeout(() => {
-      this.#showTimer = null;
-      this.manager.show(this);
-    }, delay);
+    this.#request.set({ shown: true, delay, seq: ++requestSeq });
+    if (delay <= 0) this.manager.show(this);
   }
 
   hide(delay: number = this.hideDelay()): void {
-    this.#clearTimers();
-    if (delay <= 0) {
-      this.manager.hide(this);
-      return;
-    }
-    this.#hideTimer = setTimeout(() => {
-      this.#hideTimer = null;
-      this.manager.hide(this);
-    }, delay);
+    this.#request.set({ shown: false, delay, seq: ++requestSeq });
+    if (delay <= 0) this.manager.hide(this);
   }
 
   toggle(): void {
-    if (this.isVisible()) this.hide(0);
+    if (this.visible()) this.hide(0);
     else this.show(0);
   }
 
   isVisible(): boolean {
-    return this.manager.isVisible(this);
-  }
-
-  #clearTimers(): void {
-    if (this.#showTimer) clearTimeout(this.#showTimer);
-    if (this.#hideTimer) clearTimeout(this.#hideTimer);
-    this.#showTimer = this.#hideTimer = null;
+    return this.visible();
   }
 }
 

@@ -127,9 +127,14 @@ export class Demo {}`;
     },
     { name: 'toggle()', type: '() => void', description: 'show(0) or hide(0).' },
     {
+      name: 'visible',
+      type: 'Signal<boolean>',
+      description: 'Reactive: whether the singleton is open for this trigger. Bind it in templates or read it in computed().',
+    },
+    {
       name: 'isVisible()',
       type: '() => boolean',
-      description: 'Whether the singleton is currently open for this trigger.',
+      description: 'Snapshot of visible().',
     },
     {
       name: 'engine',
@@ -154,10 +159,13 @@ export class Demo {}`;
   readonly hideDelay: Signal<number>;
   readonly disabled: Signal<boolean>;
 
-  show(delay?: number): void;
-  hide(delay?: number): void;
+  /** Reactive: open for this trigger right now. */
+  readonly visible: Signal<boolean>;
+
+  show(delay?: number): void; // default: showDelay
+  hide(delay?: number): void; // default: hideDelay
   toggle(): void;
-  isVisible(): boolean;
+  isVisible(): boolean; // snapshot of visible()
 }`;
 
   protected readonly types: Row[] = [

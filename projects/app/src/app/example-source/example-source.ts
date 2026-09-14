@@ -3,8 +3,8 @@ import {
   ElementRef,
   computed,
   input,
+  linkedSignal,
   resource,
-  signal,
   viewChildren,
 } from '@angular/core';
 import { SafeHtml } from '@angular/platform-browser';
@@ -58,7 +58,11 @@ export class ExampleSource {
     PREVIEW,
     ...this.files().map((file) => ({ id: file.file, label: file.label, file })),
   ]);
-  protected readonly active = signal(PREVIEW.id);
+  /** Selected tab id; falls back to Preview whenever the file list changes. */
+  protected readonly active = linkedSignal<string>(() => {
+    this.files();
+    return PREVIEW.id;
+  });
   protected readonly activeTab = computed(
     () => this.tabs().find((tab) => tab.id === this.active()) ?? PREVIEW,
   );

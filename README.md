@@ -124,11 +124,23 @@ export interface HkTooltipTrigger {
   readonly hideDelay: Signal<number>;
   readonly disabled: Signal<boolean>;
 
+  /** Reactive: open for this trigger right now. */
+  readonly visible: Signal<boolean>;
+
   show(delay?: number): void; // default: showDelay
   hide(delay?: number): void; // default: hideDelay
   toggle(): void;
-  isVisible(): boolean;
+  isVisible(): boolean; // snapshot of visible()
 }
+```
+
+`show()` / `hide()` record a *request* signal; Angular's `debounced()` trails it by the request's
+delay (a newer request cancels a pending one) and one effect applies what settles. There are no
+timers to manage, and `visible` is a plain signal you can bind:
+
+```html
+<button #tip="hkTooltip" hkTooltip="Copied!">Copy</button>
+<span>{{ tip.visible() ? 'showing' : 'hidden' }}</span>
 ```
 
 ### Inputs (identical on `[hkTooltip]` and `[hkJsTooltip]`)

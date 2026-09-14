@@ -56,19 +56,20 @@ export class App {
   #document = inject(DOCUMENT);
   #matDialog = inject(MatDialog);
 
-  /**
-   * An explicit choice saved in localStorage wins; otherwise the OS
-   * preference, followed live until the user picks a theme themselves.
-   */
-  readonly theme = signal<Theme>(this.#readStoredTheme() ?? this.#systemTheme());
+  /** The user's explicit choice (persisted), if any. */
+  readonly #stored = signal<Theme | null>(this.#readStoredTheme());
+  /** The OS preference, kept live. */
+  readonly #system = signal<Theme>(this.#systemTheme());
+
+  /** An explicit choice wins; otherwise the OS preference is followed. */
+  readonly theme = computed<Theme>(() => this.#stored() ?? this.#system());
   readonly themeClass = computed(() => `${this.theme()}-mode`);
 
   constructor() {
     const media = this.#document.defaultView?.matchMedia?.(DARK_QUERY);
     if (!media) return;
-    const followSystem = (event: MediaQueryListEvent) => {
-      if (this.#readStoredTheme() === null) this.theme.set(event.matches ? 'dark' : 'light');
-    };
+    const followSystem = (event: MediaQueryListEvent) =>
+      this.#system.set(event.matches ? 'dark' : 'light');
     media.addEventListener('change', followSystem);
     inject(DestroyRef).onDestroy(() => media.removeEventListener('change', followSystem));
   }
@@ -78,10 +79,10 @@ export class App {
     this.#storeTheme(next);
 
     if (this.#document.startViewTransition) {
-      this.#document.startViewTransition(() => this.theme.set(next));
+      this.#document.startViewTransition(() => this.#stored.set(next));
       return;
     }
-    this.theme.set(next);
+    this.#stored.set(next);
   }
 
   openLogin() {

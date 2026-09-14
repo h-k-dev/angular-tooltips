@@ -170,6 +170,8 @@ function browserHide(): void {
 
 const flushMicrotasks = () => Promise.resolve();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** show()/hide() are signal requests applied by effects — flush them. */
+const flush = () => TestBed.tick();
 
 describe('HkTooltip (invoker engine)', () => {
   it('should create and wire the interestfor trigger', async () => {
@@ -427,19 +429,24 @@ describe('HkJsTooltip (JS engine)', () => {
     expect(host.hasAttribute('interestfor')).toBe(false);
 
     host.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(false);
     await sleep(60);
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(true);
     expect(tooltipEl().textContent).toBe('Span tip');
     expect(host.style.getPropertyValue('anchor-name')).toBe('--hk-invoker');
+    expect(dir.visible()).toBe(true);
     expect(dir.isVisible()).toBe(true);
 
     host.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(true);
     await sleep(40);
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(false);
     expect(host.style.getPropertyValue('anchor-name')).toBe('');
-    expect(dir.isVisible()).toBe(false);
+    expect(dir.visible()).toBe(false);
   });
 
   it('leaving and re-entering before the hide delay keeps it open', async () => {
@@ -449,9 +456,13 @@ describe('HkJsTooltip (JS engine)', () => {
     const dir = fixture.debugElement.query(By.directive(HkJsTooltip)).injector.get(HkJsTooltip);
 
     dir.show(0);
+    flush();
     host.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+    flush();
     host.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+    flush();
     await sleep(60);
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(true);
   });
 
@@ -462,21 +473,30 @@ describe('HkJsTooltip (JS engine)', () => {
     const dir = fixture.debugElement.query(By.directive(HkJsTooltip)).injector.get(HkJsTooltip);
 
     dir.show(0);
+    flush();
     host.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+    flush();
     tooltipEl().dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+    flush();
     await sleep(40);
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(true);
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(false);
 
     dir.show(0);
+    flush();
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(false);
 
     // …but a pointerdown ON the host (a tap) does not.
     dir.show(0);
+    flush();
     host.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(true);
   });
 
@@ -487,15 +507,19 @@ describe('HkJsTooltip (JS engine)', () => {
 
     // Mouse focus: not :focus-visible → nothing.
     host.dispatchEvent(new FocusEvent('focusin'));
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(false);
 
     fakeHover.add(host); // :focus-visible
     host.dispatchEvent(new FocusEvent('focusin'));
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(true);
 
     fakeHover.clear();
     host.dispatchEvent(new FocusEvent('focusout'));
+    flush();
     await sleep(40);
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(false);
   });
 
@@ -518,6 +542,7 @@ describe('HkJsTooltip (JS engine)', () => {
     const btn = (fixture.nativeElement as Element).querySelector('button')!;
 
     text.show(0);
+    flush();
     expect(text.hostEl.getAttribute('aria-describedby')).toBe(TOOLTIP_ID);
     expect(text.hostEl.hasAttribute('aria-details')).toBe(false);
     expect(tooltipEl().getAttribute('role')).toBe('tooltip');
@@ -525,12 +550,14 @@ describe('HkJsTooltip (JS engine)', () => {
     // Handoff to rich content: the old host loses its reference, the new
     // one gets aria-details, and the bubble drops the tooltip role.
     rich.show(0);
+    flush();
     expect(text.hostEl.hasAttribute('aria-describedby')).toBe(false);
     expect(rich.hostEl.getAttribute('aria-details')).toBe(TOOLTIP_ID);
     expect(rich.hostEl.hasAttribute('aria-describedby')).toBe(false);
     expect(tooltipEl().hasAttribute('role')).toBe(false);
 
     rich.hide(0);
+    flush();
     expect(rich.hostEl.hasAttribute('aria-details')).toBe(false);
 
     // The invoker engine is the browser's business — nothing is written.
@@ -546,17 +573,43 @@ describe('HkJsTooltip (JS engine)', () => {
     const js = fixture.debugElement.query(By.directive(HkJsTooltip)).injector.get(HkJsTooltip);
 
     invoker.toggle();
-    expect(invoker.isVisible()).toBe(true);
+    flush();
+    expect(invoker.visible()).toBe(true);
     expect(tooltipEl().textContent).toBe('invoker tip');
 
     js.toggle();
-    expect(js.isVisible()).toBe(true);
-    expect(invoker.isVisible()).toBe(false);
+    flush();
+    expect(js.visible()).toBe(true);
+    expect(invoker.visible()).toBe(false);
     expect(tooltipEl().textContent).toBe('js tip');
 
     js.toggle();
-    expect(js.isVisible()).toBe(false);
+    flush();
+    expect(js.visible()).toBe(false);
     expect(tooltipEl().matches(':popover-open')).toBe(false);
+  });
+
+  it('exposes `visible` as a signal that templates can bind', async () => {
+    @Component({
+      imports: [HkJsTooltip],
+      template: `
+        <span #tip="hkJsTooltip" hkJsTooltip="tip">host</span>
+        <output>{{ tip.visible() ? 'open' : 'closed' }}</output>
+      `,
+    })
+    class BoundHost {}
+    const fixture = TestBed.createComponent(BoundHost);
+    await fixture.whenStable();
+    const output = () => (fixture.nativeElement as Element).querySelector('output')!.textContent;
+    const dir = fixture.debugElement.query(By.directive(HkJsTooltip)).injector.get(HkJsTooltip);
+
+    expect(output()).toBe('closed');
+    dir.show(0);
+    await fixture.whenStable();
+    expect(output()).toBe('open');
+    dir.hide(0);
+    await fixture.whenStable();
+    expect(output()).toBe('closed');
   });
 
   it('blends: invoker → JS handoff survives the stale interest loss, JS → invoker moves the anchor', async () => {
@@ -568,6 +621,7 @@ describe('HkJsTooltip (JS engine)', () => {
     // Pointer on the invoker, then straight onto the JS trigger.
     gainInterest(btn);
     span.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+    flush();
     fakeHover.add(span);
     expect(tooltipEl().textContent).toBe('js tip');
     expect(btn.style.getPropertyValue('anchor-name')).toBe('');
@@ -584,12 +638,14 @@ describe('HkJsTooltip (JS engine)', () => {
     // Back onto the invoker: its interest re-points the singleton; the JS
     // trigger's pending hide is a no-op because it is no longer active.
     span.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+    flush();
     fakeHover.clear();
     gainInterest(btn);
     expect(tooltipEl().textContent).toBe('invoker tip');
     expect(span.style.getPropertyValue('anchor-name')).toBe('');
     expect(btn.style.getPropertyValue('anchor-name')).toBe('--hk-invoker');
     await sleep(40);
+    flush();
     expect(tooltipEl().matches(':popover-open')).toBe(true);
   });
 });
