@@ -231,12 +231,40 @@ export class TooltipsManager {
     // that flipped at a viewport edge would stay flipped on the next
     // trigger even where the preferred side fits.
     el.setAttribute('data-try-gen', el.getAttribute('data-try-gen') === 'a' ? 'b' : 'a');
+    this.#describe(dir);
     this.#active = dir;
   }
 
   #unanchor(): void {
-    this.#anchored?.style.removeProperty('anchor-name');
+    if (this.#anchored) {
+      this.#anchored.style.removeProperty('anchor-name');
+      this.#undescribe(this.#anchored);
+    }
     this.#anchored = null;
+  }
+
+  // ── Accessibility (JS engine) ──────────────────────────────────────────
+  // The invoker engine gets its relations from the browser: for an
+  // `interestfor` target the UA exposes a plain hint as the invoker's
+  // description (describedby) and a rich hint via aria-details. The JS
+  // engine mirrors exactly that, and only while the singleton is anchored
+  // to the host — a static reference would describe every host with
+  // whatever the shared bubble last contained. The bubble itself keeps
+  // role="tooltip" for text and no role for rich content (a tooltip must
+  // not contain interactive content — WAI-ARIA APG). Nothing else: no
+  // aria-expanded on hosts whose role does not allow it, no invented names.
+
+  #describe(dir: HkTooltipTrigger): void {
+    if (dir.engine !== 'js') return;
+    const rich = typeof dir.content() !== 'string';
+    dir.hostEl.setAttribute(rich ? 'aria-details' : 'aria-describedby', TOOLTIP_ID);
+    dir.hostEl.removeAttribute(rich ? 'aria-describedby' : 'aria-details');
+  }
+
+  #undescribe(host: HTMLElement): void {
+    for (const attr of ['aria-describedby', 'aria-details']) {
+      if (host.getAttribute(attr) === TOOLTIP_ID) host.removeAttribute(attr);
+    }
   }
 
   // ── Content ────────────────────────────────────────────────────────────────

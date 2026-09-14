@@ -284,6 +284,26 @@ The anchor name is **released on every hide**. Two hosts carrying the same `anch
 resolve to the last one in tree order, so a stale name would put the bubble next to the
 wrong element.
 
+## Accessibility
+
+The reference is the [WAI-ARIA tooltip pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tooltip/)
+and WCAG 1.4.13 (content on hover or focus), and the rule is *no ARIA rather than bad ARIA*:
+
+- **The bubble** has `role="tooltip"` for string content. Template content is a hovercard, not a
+  tooltip — a tooltip must not contain interactive content — so it carries no role.
+- **Invoker engine**: the browser owns the relations. For an `interestfor` target the UA exposes a
+  plain hint as the invoker's description and a rich hint via `aria-details`, and handles
+  keyboard focus, Escape and touch itself.
+- **JS engine** mirrors the platform: while (and only while) the singleton is shown for a host, the
+  host gets `aria-describedby` (string content) or `aria-details` (template content) pointing at
+  the bubble. Nothing is set on idle hosts, and no `aria-expanded` is written on elements whose
+  role does not allow it.
+- **Dismissible, hoverable, persistent**: on both engines the tooltip stays while the trigger or
+  the bubble is hovered, and closes on Escape.
+- **Keyboard**: the JS engine shows on `:focus-visible`, so a JS host that is not natively
+  focusable needs `tabindex="0"` to be reachable — and the information must not be *only* in a
+  tooltip on an unfocusable element.
+
 ## Theming
 
 The tooltip is styled through CSS custom properties with the **`--tt-` prefix**. Every variable

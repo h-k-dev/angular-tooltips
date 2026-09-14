@@ -499,6 +499,46 @@ describe('HkJsTooltip (JS engine)', () => {
     expect(tooltipEl().matches(':popover-open')).toBe(false);
   });
 
+  it('references the bubble from the host only while shown: describedby for text, details for rich content', async () => {
+    @Component({
+      imports: [HkJsTooltip, HkTooltip],
+      template: `
+        <span hkJsTooltip="plain">text</span>
+        <div [hkJsTooltip]="card">rich</div>
+        <button hkTooltip="invoker">btn</button>
+        <ng-template #card><b>card</b></ng-template>
+      `,
+    })
+    class AriaHost {}
+    const fixture = TestBed.createComponent(AriaHost);
+    await fixture.whenStable();
+    const [text, rich] = fixture.debugElement
+      .queryAll(By.directive(HkJsTooltip))
+      .map((de) => de.injector.get(HkJsTooltip));
+    const btn = (fixture.nativeElement as Element).querySelector('button')!;
+
+    text.show(0);
+    expect(text.hostEl.getAttribute('aria-describedby')).toBe(TOOLTIP_ID);
+    expect(text.hostEl.hasAttribute('aria-details')).toBe(false);
+    expect(tooltipEl().getAttribute('role')).toBe('tooltip');
+
+    // Handoff to rich content: the old host loses its reference, the new
+    // one gets aria-details, and the bubble drops the tooltip role.
+    rich.show(0);
+    expect(text.hostEl.hasAttribute('aria-describedby')).toBe(false);
+    expect(rich.hostEl.getAttribute('aria-details')).toBe(TOOLTIP_ID);
+    expect(rich.hostEl.hasAttribute('aria-describedby')).toBe(false);
+    expect(tooltipEl().hasAttribute('role')).toBe(false);
+
+    rich.hide(0);
+    expect(rich.hostEl.hasAttribute('aria-details')).toBe(false);
+
+    // The invoker engine is the browser's business — nothing is written.
+    gainInterest(btn);
+    expect(btn.hasAttribute('aria-describedby')).toBe(false);
+    expect(btn.hasAttribute('aria-details')).toBe(false);
+  });
+
   it('shares the programmatic API with the invoker engine', async () => {
     const fixture = TestBed.createComponent(MixedHost);
     await fixture.whenStable();
