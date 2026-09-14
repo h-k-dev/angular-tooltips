@@ -79,3 +79,11 @@
   color: var(--mat-sys-on-surface-variant);
   cursor: help;
 }
+
+.demo-span {
+  padding: 4px 10px;
+  border: 1px dashed var(--mat-sys-outline);
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: help;
+}

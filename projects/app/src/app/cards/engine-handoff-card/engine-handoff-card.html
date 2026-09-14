@@ -1,0 +1,50 @@
+<h2>Engine handoff — one continuous tooltip</h2>
+<p>
+  Solid tiles are <strong>invoker</strong> triggers (<code>hkTooltip</code> on
+  <code>&lt;button&gt;</code> / <code>&lt;a href&gt;</code>), dashed tiles are
+  <strong>JS</strong> triggers (<code>hkJsTooltip</code> on <code>&lt;span&gt;</code> /
+  <code>&lt;div&gt;</code> / <code>&lt;code&gt;</code>). Sweep across the row: the bubble
+  glides from engine to engine without closing, because both end in the same
+  <code>show()</code> on the same singleton and the same anchor name.
+</p>
+<div class="tag-grid">
+  <button class="tag-item tag-item--invoker" hkTooltip="invoker · <button>">&lt;button&gt;</button>
+  <span class="tag-item tag-item--js" tabindex="0" hkJsTooltip="js · <span>">&lt;span&gt;</span>
+  <a class="tag-item tag-item--invoker" href="#" (click)="$event.preventDefault()"
+    hkTooltip="invoker · <a href>">&lt;a href&gt;</a>
+  <div class="tag-item tag-item--js" tabindex="0" hkJsTooltip="js · <div>">&lt;div&gt;</div>
+  <button class="tag-item tag-item--invoker" hkTooltip="invoker · <button>, bottom"
+    hkTooltipPlacement="bottom">&lt;button&gt;</button>
+  <code class="tag-item tag-item--js" tabindex="0" hkJsTooltip="js · <code>, bottom"
+    hkTooltipPlacement="bottom">&lt;code&gt;</code>
+</div>
+
+<h3>Same API on both engines</h3>
+<p>
+  <code>show()</code>, <code>hide()</code>, <code>toggle()</code> and
+  <code>[hkTooltipDisabled]</code> behave identically. Both targets bind a ticking
+  counter — hover one and watch the open tooltip re-render in place every second.
+  (A JS tooltip opened with <code>toggle()</code> closes on the next click anywhere else,
+  exactly like tippy's <em>hideOnClick</em>; a manually opened invoker tooltip stays until
+  <code>hide()</code>.)
+</p>
+<div class="api-row">
+  <button class="tag-item tag-item--invoker" #invokerApi="hkTooltip"
+    [hkTooltip]="'invoker · ' + seconds() + ' s'" [hkTooltipDisabled]="disabled()">
+    invoker target
+  </button>
+  <span class="tag-item tag-item--js" tabindex="0" #jsApi="hkJsTooltip"
+    [hkJsTooltip]="'js · ' + seconds() + ' s'" [hkTooltipDisabled]="disabled()">
+    js target
+  </span>
+
+  <span class="api-row__sep"></span>
+
+  <!-- Both refs implement HkTooltipTrigger — same calls whichever engine. -->
+  <button mat-stroked-button (click)="invokerApi.toggle()">toggle() invoker</button>
+  <button mat-stroked-button (click)="jsApi.toggle()">toggle() js</button>
+  <button mat-stroked-button (click)="invokerApi.hide(0); jsApi.hide(0)">hide() both</button>
+  <button mat-stroked-button (click)="disabled.set(!disabled())">
+    {{ disabled() ? 'enable' : 'disable' }} both
+  </button>
+</div>

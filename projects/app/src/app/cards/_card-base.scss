@@ -136,3 +136,11 @@
     cursor: help;
   }
 }
+
+// Engine markers for cards that mix both directives: invoker triggers keep
+// the solid tile, JS triggers get a dashed border.
+@mixin engine-tiles {
+  .tag-item--js {
+    border-style: dashed;
+  }
+}

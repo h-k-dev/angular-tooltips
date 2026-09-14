@@ -10,21 +10,26 @@
   <p class="dialog-hint">
     Dialogs live in the top layer — and so does the tooltip, so it is never
     clipped. This viewport scrolls: tooltips track their anchors while you
-    scroll and hide the moment an anchor leaves the visible area.
+    scroll and hide the moment an anchor leaves the visible area. Both engines
+    are represented in every row.
   </p>
 
   @for (placement of placements; track placement) {
   <section class="direction-group">
     <h3 class="direction-group__title">{{ placement }}</h3>
     <div class="direction-group__row">
-      <button mat-stroked-button [hkTooltip]="'<button> — placement: ' + placement"
+      <button mat-stroked-button [hkTooltip]="'<button> — invoker, placement: ' + placement"
         [hkTooltipPlacement]="placement">
         Button
       </button>
       <a class="demo-link" href="#" (click)="$event.preventDefault()"
-        [hkTooltip]="'<a href> — placement: ' + placement" [hkTooltipPlacement]="placement">
+        [hkTooltip]="'<a href> — invoker, placement: ' + placement" [hkTooltipPlacement]="placement">
         Link
       </a>
+      <span class="demo-span" tabindex="0"
+        [hkJsTooltip]="'<span> — JS engine, placement: ' + placement" [hkTooltipPlacement]="placement">
+        Span
+      </span>
     </div>
   </section>
   }

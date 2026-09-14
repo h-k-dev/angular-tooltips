@@ -8,17 +8,22 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/home-page/home-page').then((m) => m.HomePage),
   },
   {
-    path: 'anchor-tooltips',
-    title: 'Angular Tooltips — Anchor Tooltips',
-    loadComponent: () =>
-      import('./pages/anchor-tooltips-page/anchor-tooltips-page').then(
-        (m) => m.AnchorTooltipsPage,
-      ),
+    path: 'invoker',
+    title: 'Angular Tooltips — Invoker',
+    loadComponent: () => import('./pages/invoker-page/invoker-page').then((m) => m.InvokerPage),
   },
   {
-    path: 'examples',
-    title: 'Angular Tooltips — Examples',
+    path: 'js-anchor',
+    title: 'Angular Tooltips — JS Anchor',
     loadComponent: () =>
-      import('./pages/examples-page/examples-page').then((m) => m.ExamplesPage),
+      import('./pages/js-anchor-page/js-anchor-page').then((m) => m.JsAnchorPage),
   },
+  {
+    path: 'both',
+    title: 'Angular Tooltips — Both',
+    loadComponent: () => import('./pages/both-page/both-page').then((m) => m.BothPage),
+  },
+  // Old demo URLs.
+  { path: 'anchor-tooltips', redirectTo: 'invoker' },
+  { path: 'examples', redirectTo: 'both' },
 ];

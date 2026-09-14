@@ -1,0 +1,37 @@
+<h2>Works on any element</h2>
+<p>
+  <code>hkJsTooltip</code> attaches to plain HTML, not just buttons. Hover with a mouse,
+  focus with the keyboard (Escape dismisses), or <strong>tap</strong> on a touch screen
+  (tap elsewhere to dismiss). Every placement auto-flips at the viewport edge exactly
+  like the invoker engine — it is the same CSS.
+</p>
+<div class="tag-grid">
+  <span class="tag-item" tabindex="0" hkJsTooltip="An inline <span> — no button semantics needed"
+    hkTooltipPlacement="top">
+    &lt;span&gt;
+  </span>
+  <div class="tag-item" tabindex="0" hkJsTooltip="A plain <div> block — any element can be an anchor"
+    hkTooltipPlacement="bottom">
+    &lt;div&gt;
+  </div>
+  <code class="tag-item" tabindex="0" hkJsTooltip="A <code> snippet — annotate tokens mid-sentence"
+    hkTooltipPlacement="left">
+    &lt;code&gt;
+  </code>
+  <img class="tag-item tag-item--img" src="favicon.ico" alt="Angular logo" tabindex="0"
+    hkJsTooltip="An <img> — perfect for avatars and thumbnails" hkTooltipPlacement="right" />
+  <input class="tag-item tag-item--input" type="text" placeholder="<input>"
+    hkJsTooltip="An <input> — the tooltip also shows on focus" hkTooltipPlacement="top" />
+  <mat-icon class="tag-item tag-item--icon" tabindex="0"
+    hkJsTooltip="A <mat-icon> component host works too" hkTooltipPlacement="bottom">
+    info
+  </mat-icon>
+  <span class="tag-item" tabindex="0" hkJsTooltip="Shows after 500 ms, hides after 300 ms"
+    hkTooltipShowDelay="500" hkTooltipHideDelay="300">
+    delayed
+  </span>
+  <span class="tag-item tag-item--disabled" tabindex="0" hkJsTooltip="You should never see this"
+    hkTooltipDisabled>
+    disabled
+  </span>
+</div>

@@ -1,0 +1,14 @@
+@use '../../cards/card-base' as *;
+
+:host {
+  display: block;
+}
+
+@include page-header;
+@include tag-tiles;
+@include card-shell;
+@include card-grid;
+
+.playground-grid {
+  margin-top: 2rem;
+}

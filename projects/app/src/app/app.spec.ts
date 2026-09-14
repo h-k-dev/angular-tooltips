@@ -46,6 +46,6 @@ describe('App', () => {
     const labels = [...compiled.querySelectorAll('.aside-nav__link')].map((a) =>
       a.textContent?.trim(),
     );
-    expect(labels).toEqual(['Home', 'Anchor Tooltips', 'Examples']);
+    expect(labels).toEqual(['Home', 'Invoker', 'JS Anchor', 'Both']);
   });
 });

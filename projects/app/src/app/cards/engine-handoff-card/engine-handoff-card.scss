@@ -1,0 +1,25 @@
+@use '../card-base' as *;
+
+@include card-content;
+@include tag-tiles;
+@include engine-tiles;
+
+h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.4rem;
+  color: var(--mat-sys-on-surface);
+}
+
+.api-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.api-row__sep {
+  width: 1px;
+  height: 28px;
+  background: var(--mat-sys-outline-variant);
+}

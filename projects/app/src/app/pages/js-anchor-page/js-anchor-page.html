@@ -1,0 +1,35 @@
+<header class="page-header">
+  <h1>JS Anchor</h1>
+  <p>
+    The <code>hkJsTooltip</code> directive for every host that can <strong>not</strong> be an
+    Interest Invoker — <code>&lt;span&gt;</code>, <code>&lt;div&gt;</code>, <code>&lt;img&gt;</code>,
+    <code>&lt;input&gt;</code>, icons, component hosts. What the browser does for invokers is
+    done here in JS, tippy-style: pointer and focus listeners, show/hide delays,
+    keep-open while hovering the bubble, Escape and tap-outside to dismiss.
+    Positioning is still 100% CSS Anchor Positioning, the popover is the same
+    singleton, and the API is identical — only the engine differs.
+  </p>
+</header>
+
+<div class="tag-grid">
+  <span class="tag-item" tabindex="0" [hkJsTooltip]="alpha" [hkTooltipHideDelay]="200">
+    Trigger A — &lt;span&gt;, sync component
+  </span>
+  <div class="tag-item" tabindex="0" [hkJsTooltip]="beta" [hkTooltipHideDelay]="200"
+    hkTooltipPlacement="bottom">
+    Trigger B — &lt;div&gt;, async component
+  </div>
+</div>
+
+<ng-template #alpha>
+  <app-probe-alpha />
+</ng-template>
+<ng-template #beta>
+  <app-probe-beta />
+</ng-template>
+
+<app-lifecycle-log />
+
+<div class="playground-grid">
+  <app-any-element-card />
+</div>

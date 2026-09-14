@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { AnchorTooltipsPage } from './anchor-tooltips-page';
+import { InvokerPage } from './invoker-page';
 
 // jsdom knows neither CSS Anchor Positioning nor Interest Invokers; without
 // these stubs every [hkTooltip] in the template would throw at construction
@@ -24,16 +24,16 @@ afterAll(() => {
   }
 });
 
-describe('AnchorTooltipsPage', () => {
-  let component: AnchorTooltipsPage;
-  let fixture: ComponentFixture<AnchorTooltipsPage>;
+describe('InvokerPage', () => {
+  let component: InvokerPage;
+  let fixture: ComponentFixture<InvokerPage>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AnchorTooltipsPage],
+      imports: [InvokerPage],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(AnchorTooltipsPage);
+    fixture = TestBed.createComponent(InvokerPage);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

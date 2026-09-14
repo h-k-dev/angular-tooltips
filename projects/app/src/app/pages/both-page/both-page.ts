@@ -2,24 +2,33 @@ import { Component, inject, signal, DOCUMENT } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { DenseGridCard } from '../../cards/dense-grid-card/dense-grid-card';
+import { EngineHandoffCard } from '../../cards/engine-handoff-card/engine-handoff-card';
 import { PlacementsCard } from '../../cards/placements-card/placements-card';
 import { RichContentCard } from '../../cards/rich-content-card/rich-content-card';
 import { ThemingCard } from '../../cards/theming-card/theming-card';
 
 @Component({
-  selector: 'app-examples-page',
-  imports: [RouterLink, DenseGridCard, PlacementsCard, RichContentCard, ThemingCard],
-  templateUrl: './examples-page.html',
-  styleUrl: './examples-page.scss',
+  selector: 'app-both-page',
+  imports: [
+    RouterLink,
+    EngineHandoffCard,
+    DenseGridCard,
+    PlacementsCard,
+    RichContentCard,
+    ThemingCard,
+  ],
+  templateUrl: './both-page.html',
+  styleUrl: './both-page.scss',
   host: {
     '(window:scroll)': 'onScroll()',
   },
 })
-export class ExamplesPage {
+export class BothPage {
   readonly #doc = inject(DOCUMENT);
 
   // Floating fragment nav on the right, scoped to this page's cards.
   protected readonly fragments = [
+    { fragment: 'handoff', label: 'Engine handoff' },
     { fragment: 'dense-grid', label: 'Dense grid' },
     { fragment: 'placements', label: 'Placements' },
     { fragment: 'rich-content', label: 'Rich content' },

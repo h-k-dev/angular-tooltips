@@ -1,10 +1,11 @@
 <h2>Rich content — lazy templates</h2>
 <p>
-  Pass an <code>&lt;ng-template&gt;</code> instead of a string. The card is stamped
-  lazily on first show — its <code>resource()</code> fires only then — and results are
-  cached app-wide for 15&nbsp;s via <code>HkTooltipCache</code>. Hover a name twice:
-  the second show is instant, with the same fetch timestamp. Two triggers for the
-  same user share one request (both <em>&#64;amelia</em> tiles hit one cache entry).
+  Pass an <code>&lt;ng-template&gt;</code> instead of a string — on either engine. The card is
+  stamped lazily on first show — its <code>resource()</code> fires only then — and results
+  are cached app-wide for 15&nbsp;s via <code>HkTooltipCache</code>. Hover a name twice: the
+  second show is instant, with the same fetch timestamp. Triggers for the same user share
+  one request (both <em>&#64;amelia</em> tiles hit one cache entry — one is a button, one a
+  span).
 </p>
 <div class="tag-grid">
   <button class="tag-item" [hkTooltip]="userCard" [hkTooltipData]="1"
@@ -15,14 +16,14 @@
     [hkTooltipData]="2" [hkTooltipHideDelay]="200" hkTooltipPlacement="bottom">
     &#64;jonas
   </a>
-  <button class="tag-item" [hkTooltip]="userCard" [hkTooltipData]="3"
+  <span class="tag-item" tabindex="0" [hkJsTooltip]="userCard" [hkTooltipData]="3"
     [hkTooltipHideDelay]="200" hkTooltipPlacement="bottom">
-    &#64;priya
-  </button>
-  <button class="tag-item" [hkTooltip]="userCard" [hkTooltipData]="1"
+    &#64;priya (span)
+  </span>
+  <span class="tag-item" tabindex="0" [hkJsTooltip]="userCard" [hkTooltipData]="1"
     [hkTooltipHideDelay]="200">
-    &#64;amelia (again)
-  </button>
+    &#64;amelia (span)
+  </span>
   <button class="tag-item" [hkTooltip]="photoCard" [hkTooltipHideDelay]="200">
     <mat-icon>image</mat-icon> image
   </button>

@@ -1,11 +1,12 @@
 import { Component, Injectable, OnDestroy, OnInit, inject, resource, signal } from '@angular/core';
 
-import { HkTooltipCache } from '../../../../../angular-tooltips/src/public-api';
+import { HkTooltipCache } from '../../../../angular-tooltips/src/public-api';
 
 /**
  * Page-provided log the probes write into: every ngOnInit / ngOnDestroy of
  * a projected tooltip component lands here, visible on the page — proof
- * that switching triggers runs the full component lifecycle.
+ * that switching triggers runs the full component lifecycle. Newest entry
+ * first, so the latest event is always in view.
  */
 @Injectable()
 export class LifecycleLog {
@@ -13,8 +14,55 @@ export class LifecycleLog {
 
   push(message: string): void {
     const at = new Date().toLocaleTimeString();
-    this.entries.update((list) => [...list, `${at} — ${message}`]);
+    this.entries.update((list) => [`${at} — ${message}`, ...list]);
   }
+}
+
+/** Renders the page's LifecycleLog, newest event on top. */
+@Component({
+  selector: 'app-lifecycle-log',
+  template: `
+    <h2>Lifecycle log</h2>
+    @if (log.entries().length === 0) {
+      <p class="lifecycle-log__empty">Hover a trigger to start.</p>
+    } @else {
+      <ol reversed>
+        @for (entry of log.entries(); track $index) {
+          <li>{{ entry }}</li>
+        }
+      </ol>
+    }
+  `,
+  styles: `
+    :host {
+      display: block;
+      margin-top: 2rem;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      background: var(--mat-sys-surface);
+    }
+    h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 0.5rem;
+      color: var(--mat-sys-on-surface);
+    }
+    ol {
+      margin: 0;
+      padding-left: 2.5rem;
+      font: 0.85rem/1.7 monospace;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .lifecycle-log__empty {
+      font-size: 0.875rem;
+      color: var(--mat-sys-on-surface-variant);
+      margin: 0;
+    }
+  `,
+})
+export class LifecycleLogView {
+  protected readonly log = inject(LifecycleLog);
 }
 
 /** Sync content: pure lifecycle probe. */

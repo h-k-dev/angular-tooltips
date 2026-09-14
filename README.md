@@ -9,18 +9,24 @@
 > (CSS Anchor Positioning, `position-visibility`, anchored container queries, and
 > [Interest Invokers](https://developer.chrome.com/blog/interestfor)) that are currently only
 > supported in Chrome and other Chromium-based browsers. There is **no fallback** — the
-> directive throws where the platform can't deliver. Expect breaking changes while the
+> directives throw where the platform can't deliver. Expect breaking changes while the
 > underlying specs and this API settle.
 
-Modern, anchor-native tooltips for Angular. One singleton popover element, **zero JS in the
-hot path**:
+Modern, anchor-native tooltips for Angular. One singleton popover element, **two trigger
+engines with one API**, zero JS positioning:
 
-- **Triggering** is Interest Invokers (`interestfor`): the browser owns hover, keyboard
-  focus, touch long-press and delays — no event listeners, no timers.
-- **Positioning** is CSS Anchor Positioning: placement, viewport flipping, tail direction
-  and scroll tracking are all browser CSS — no rect reads, no scroll listeners.
-- **The library's whole runtime job**: render the content (string or lazily stamped
-  template) and move ONE `anchor-name` onto whichever trigger holds interest.
+- **`hkTooltip` — the invoker engine.** On hosts that can be Interest Invokers (`<button>`,
+  `<a href>`, `<area href>`) the browser owns hover, keyboard focus, touch long-press and the
+  delays via `interestfor` — no event listeners, no timers.
+- **`hkJsTooltip` — the JS engine.** On everything else (`<span>`, `<div>`, `<img>`,
+  `<input>`, icons, component hosts) the directive does what the browser does for invokers,
+  tippy-style: pointer/focus listeners, delays, keep-open while hovering the bubble, Escape
+  and tap-outside to dismiss.
+- **Positioning** is CSS Anchor Positioning for both: placement, viewport flipping, tail
+  direction and scroll tracking are browser CSS — no rect reads, no scroll listeners.
+- **They blend.** Both engines end in the same `show()` on the same singleton and move the
+  same `anchor-name`, so a pointer sweeping from a button onto a span and back is one
+  continuous tooltip — no close, no re-entrance animation.
 
 **[Live demo →](https://h-k-dev.github.io/angular-tooltips/)**
 
@@ -32,12 +38,12 @@ hot path**:
 - **Top layer, always** — the tooltip is a native `[popover]`, so it renders above dialogs and is
   never clipped by `overflow` or `z-index` stacking contexts.
 - **The browser does the work** — triggering (hover/focus/long-press/delays via
-  `interestfor`), placement, auto-flipping at the viewport edge, tail direction, and
-  hide-when-scrolled-out (`position-visibility: anchors-visible`).
+  `interestfor`) wherever it can, placement, auto-flipping at the viewport edge, tail
+  direction, and hide-when-scrolled-out (`position-visibility: anchors-visible`).
 - **Real component lifecycles** — template content is stamped per show and destroyed on
   hide/handoff: `ngOnInit`/`ngOnDestroy` run, `resource()` loads lazily, nothing leaks.
-- **Fail fast** — missing platform support or an invalid host throws at construction
-  instead of degrading silently.
+- **Fail fast** — missing platform support or the wrong directive for a host throws at
+  construction instead of degrading silently.
 
 ## Installation
 
@@ -63,64 +69,117 @@ or in your global `styles.css`:
 
 ## Usage
 
-Attach the standalone directive to any element that can be an **interest invoker** —
-`<button>`, `<a href>` or `<area href>`:
+Pick the directive by host: `hkTooltip` for elements that can be **interest invokers**
+(`<button>`, `<a href>`, `<area href>`), `hkJsTooltip` for **everything else**. The
+secondary inputs share the same names on both.
 
 ```ts
 import { Component } from '@angular/core';
-import { HkTooltip } from '@h-k-dev/angular-tooltips';
+import { HkTooltip, HkJsTooltip } from '@h-k-dev/angular-tooltips';
 
 @Component({
   selector: 'app-demo',
-  imports: [HkTooltip],
+  imports: [HkTooltip, HkJsTooltip],
   template: `
+    <!-- invoker engine: the browser triggers these -->
     <button [hkTooltip]="'Save your progress'">Save</button>
 
-    <button hkTooltip="Deletes immediately" hkTooltipPlacement="right" [hkTooltipDelay]="300">
+    <button hkTooltip="Deletes immediately" hkTooltipPlacement="right" hkTooltipShowDelay="300">
       Delete
     </button>
 
     <a href="/docs" hkTooltip="Opens the documentation">Docs</a>
+
+    <!-- JS engine: the directive triggers these -->
+    <span tabindex="0" hkJsTooltip="An inline span">status</span>
+    <img src="avatar.png" alt="" hkJsTooltip="Amelia Chen" hkTooltipPlacement="bottom" />
+    <input placeholder="Search" hkJsTooltip="Shows on focus too" />
   `,
 })
 export class Demo {}
 ```
 
-The `TooltipsManager` service exclusively manages the popover element and its content;
-the directive is a thin trigger registration that wires `interestfor` and delays onto its
-host. When interest moves to another trigger, the manager re-points the single
-`--hk-invoker` anchor name — CSS re-resolves everything else automatically, even while the
-popover is open.
+Using the wrong directive for a host throws at construction: `hkTooltip` on a `<span>`, or
+`hkJsTooltip` on a `<button>` (the browser engine is strictly better there).
+
+The `TooltipsManager` service exclusively manages the popover element and its content; the
+directives are thin trigger registrations. Whenever a trigger is shown, the manager re-points
+the single `--hk-invoker` anchor name — CSS re-resolves everything else automatically, even
+while the popover is open.
 
 ## API
 
-### `[hkTooltip]` directive
+Both directives implement the same interface, so consumers can hold either as an
+`HkTooltipTrigger`:
 
-**Throws at construction** when CSS Anchor Positioning or Interest Invokers are
-unsupported, or when the host element cannot be an interest invoker (anything other than
-`<button>`, `<a href>`, `<area href>`).
+```ts
+export interface HkTooltipTrigger {
+  readonly hostEl: HTMLElement;
+  readonly engine: 'invoker' | 'js';
 
-| Input                | Type                                                | Default     | Description                                                 |
-| -------------------- | --------------------------------------------------- | ----------- | ----------------------------------------------------------- |
-| `hkTooltip`          | `string \| TemplateRef<HkTooltipContext>` (required) | —           | Tooltip text, or a template for rich content (see below).   |
-| `hkTooltipData`      | `unknown`                                            | `undefined` | Context for template content — the template's implicit `let` variable. |
-| `hkTooltipPlacement` | `'top' \| 'bottom' \| 'left' \| 'right'`             | `'top'`     | Preferred side; auto-flips when space runs out.             |
-| `hkTooltipDelay`     | `number` (ms)                                        | `0`         | Show delay — maps to CSS `interest-delay-start`.            |
-| `hkTooltipHideDelay` | `number` (ms)                                        | `80`        | Hide delay — maps to CSS `interest-delay-end`.              |
+  readonly content: Signal<string | TemplateRef<HkTooltipContext>>;
+  readonly data: Signal<unknown>;
+  readonly placement: Signal<'top' | 'bottom' | 'left' | 'right'>;
+  readonly showDelay: Signal<number>;
+  readonly hideDelay: Signal<number>;
+  readonly disabled: Signal<boolean>;
 
-### `supportsAnchorPositioning()` / `supportsInterestInvokers()`
+  show(delay?: number): void; // default: showDelay
+  hide(delay?: number): void; // default: hideDelay
+  toggle(): void;
+  isVisible(): boolean;
+}
+```
 
-The platform checks the directive requires — use them to gate rendering in apps that must
-also run on non-Chromium browsers.
+### Inputs (identical on `[hkTooltip]` and `[hkJsTooltip]`)
+
+| Input                                 | Type                                                 | Default     | Description                                                            |
+| ------------------------------------- | ---------------------------------------------------- | ----------- | ---------------------------------------------------------------------- |
+| `hkTooltip` **or** `hkJsTooltip`      | `string \| TemplateRef<HkTooltipContext>` (required) | —           | Tooltip text, or a template for rich content (see below).              |
+| `hkTooltipData`                       | `unknown`                                            | `undefined` | Context for template content — the template's implicit `let` variable. |
+| `hkTooltipPlacement`                  | `'top' \| 'bottom' \| 'left' \| 'right'`             | `'top'`     | Preferred side; auto-flips when space runs out.                        |
+| `hkTooltipShowDelay`                  | `number` (ms)                                        | `0`         | Show delay. Invoker engine: CSS `interest-delay-start`.                |
+| `hkTooltipHideDelay`                  | `number` (ms)                                        | `80`        | Hide delay. Invoker engine: CSS `interest-delay-end`.                  |
+| `hkTooltipDisabled`                   | `boolean`                                            | `false`     | Never shows while `true` (hides if currently open).                    |
+
+An **open** tooltip re-renders in place when `content`, `data`, `placement` or `disabled`
+change.
+
+### Methods (`exportAs: 'hkTooltip'` / `'hkJsTooltip'`)
+
+```html
+<button #tip="hkTooltip" hkTooltip="Copied!">Copy</button>
+<button (click)="tip.show(0)">show</button>
+<button (click)="tip.hide()">hide</button>
+<button (click)="tip.toggle()">toggle</button>
+```
+
+Programmatic `show()` opens the popover manually on either engine; it stays until `hide()`,
+the trigger's own hide path, or (JS engine) Escape / a pointerdown outside.
+
+### Engines
+
+| Engine    | Directive     | Hosts                                        | Hover / focus / touch                                     |
+| --------- | ------------- | -------------------------------------------- | --------------------------------------------------------- |
+| `invoker` | `hkTooltip`   | `<button>`, `<a href>`, `<area href>`        | Browser-native via `interestfor` (long-press on touch).   |
+| `js`      | `hkJsTooltip` | any other element or component host          | Pointer enter/leave, `:focus-visible` focus, tap to show. |
+
+Both: keep-open while hovering the bubble, same delays, same singleton, same CSS.
+
+### `supportsAnchorPositioning()` / `supportsInterestInvokers()` / `isInterestInvoker(el)`
+
+The platform checks the directives require, and the host check that splits the engines — use
+them to gate rendering in apps that must also run on non-Chromium browsers.
 
 ## Rich content — templates, lazy loading & caching
 
-Pass an `<ng-template>` instead of a string. The template is stamped into the singleton
-**lazily on first show** and destroyed on hide/swap — nothing is instantiated for tooltips
-that are never shown:
+Pass an `<ng-template>` instead of a string, on either engine. The template is stamped into
+the singleton **lazily on first show** and destroyed on hide/swap — nothing is instantiated
+for tooltips that are never shown:
 
 ```html
 <button [hkTooltip]="userCard" [hkTooltipData]="user.id">&#64;{{ user.handle }}</button>
+<span tabindex="0" [hkJsTooltip]="userCard" [hkTooltipData]="user.id">&#64;{{ user.handle }}</span>
 
 <ng-template #userCard let-userId>
   <app-user-hover-card [userId]="userId" />
@@ -150,11 +209,11 @@ Notes:
 
 - String content keeps `role="tooltip"`. Template content drops the role (it is a
   hovercard, not a tooltip, in ARIA terms) and may contain interactive elements —
-  interest is sustained while hovering the tooltip itself, so rich content stays
+  the tooltip stays open while hovered on both engines, so rich content stays
   interactable for free.
 - Projected components run their **full lifecycle**: `ngOnInit` on stamp, `ngOnDestroy`
-  on hide or when interest moves to another trigger — see the "Anchor Tooltips" page in
-  the demo for a live lifecycle log.
+  on hide or when the singleton moves to another trigger — see the "Invoker" and
+  "JS Anchor" pages in the demo for a live lifecycle log.
 
 ### `HkTooltipCache`
 
@@ -183,38 +242,47 @@ automatically when a trigger or its projected component is destroyed.
 
 ## How triggering works
 
-Every trigger's host carries `interestfor` pointing at the one singleton popover; the
+### Invoker engine
+
+Every `hkTooltip` host carries `interestfor` pointing at the one singleton popover; the
 browser owns hover, keyboard focus, touch long-press and the delays (mapped to CSS
 `interest-delay-start` / `interest-delay-end` from the same inputs). The library's only
 runtime hooks are events the browser fires **on the popover**:
 
 - `interest` (before opening, `source` = the invoker): render the content and move the
-  `--hk-invoker` anchor name onto the source. If the trigger has no content yet, the event
-  is cancelled so the browser never opens an empty bubble.
-- `loseinterest`: hide and destroy any stamped view.
+  `--hk-invoker` anchor name onto the source. If the trigger is disabled or has no content
+  yet, the event is cancelled so the browser never opens an empty bubble.
+- `loseinterest`: hide, destroy any stamped view and release the anchor name.
 
-The singleton popover is **re-pointed** between anchors, never destroyed and recreated —
-sweeping across a dense grid never restarts the enter animation.
+### JS engine
+
+Every `hkJsTooltip` host listens to `pointerenter` / `pointerleave` (mouse and pen; a touch
+tap shows immediately) and `focusin` / `focusout` (`:focus-visible` only, so a mouse click
+that focuses the host does not pop the tooltip). Delays run on timers; the manager keeps a
+JS tooltip open while the popover itself is hovered and closes it on Escape or a
+`pointerdown` outside the trigger and the popover.
 
 ### Handoffs (why this is subtle)
 
-The browser reports interest loss only after `interest-delay-end` has elapsed, so during a
-fast trigger → trigger sweep a **stale** `loseinterest` (belonging to the invoker you
-already left) arrives while the next trigger's tooltip is showing. The manager applies two
-rules:
+The singleton popover is **re-pointed** between triggers, never destroyed and recreated —
+sweeping across a dense grid never restarts the enter animation, whichever engine each cell
+uses. Two rules make that hold across engines:
 
 1. **`loseinterest` is never cancelled.** Cancelling it leaves the invoker permanently
    "interested": its next hover fires no `interest` event, and that trigger's tooltip
    silently stops working. The browser is always allowed to clear its interest state and
    run its default hide.
 2. **The popover is restored before the next paint** — but only if the active trigger is
-   still engaged (host `:hover`, `:focus-within`, or the tooltip itself hovered). The
-   reopen suppresses the entrance animation, so visually the tooltip never left. If
-   nothing is engaged, the hide stands: a trigger → trigger → empty-space sweep cannot
-   resurrect a tooltip into empty space.
+   still engaged (host `:hover`, `:focus-within`, or the tooltip itself hovered). This is
+   what makes an invoker → JS handoff seamless: the invoker's `interest-delay-end` fires
+   after the pointer already reached the JS trigger, the browser closes the popover, and the
+   manager reopens it in the same task with the entrance animation suppressed. If nothing is
+   engaged, the hide stands: a trigger → trigger → empty-space sweep cannot resurrect a
+   tooltip into empty space.
 
-The guarantees that fall out: hover across triggers in any order, revisit as often as you
-like — no flicker on handoff, no lost interest state, no stuck tooltips.
+The anchor name is **released on every hide**. Two hosts carrying the same `anchor-name`
+resolve to the last one in tree order, so a stale name would put the bubble next to the
+wrong element.
 
 ## Theming
 
@@ -261,12 +329,12 @@ the defaults give you the familiar dark M3 look. Override on `:root` (or any anc
 
 ## Browser support
 
-Requires **both** [CSS Anchor Positioning](https://caniuse.com/css-anchor-positioning)
-and Interest Invokers (`interestfor`) — today that means Chrome and other Chromium-based
-browsers. There is no silent fallback: the directive throws at construction on an
-unsupported platform (and on a host element that cannot be an interest invoker). Gate
-rendering with `supportsAnchorPositioning()` / `supportsInterestInvokers()` if your app
-must also load elsewhere.
+Requires [CSS Anchor Positioning](https://caniuse.com/css-anchor-positioning) (both engines)
+and Interest Invokers (`interestfor`, the `hkTooltip` engine) — today that means Chrome and
+other Chromium-based browsers. There is no silent fallback: the directives throw at
+construction on an unsupported platform, and when used on the wrong kind of host. Gate
+rendering with `supportsAnchorPositioning()` / `supportsInterestInvokers()` if your app must
+also load elsewhere.
 
 ## Development
 

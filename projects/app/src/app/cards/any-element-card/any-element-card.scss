@@ -1,0 +1,9 @@
+@use '../card-base' as *;
+
+@include card-content;
+@include tag-tiles;
+
+.tag-item--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
