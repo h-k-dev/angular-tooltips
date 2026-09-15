@@ -22,8 +22,9 @@
 </mat-toolbar>
 
 <mat-drawer-container class="layout">
-  <mat-drawer #drawer mode="side" [opened]="true" class="layout__aside">
-    <nav class="aside-nav">
+  <mat-drawer #drawer [mode]="narrow() ? 'over' : 'side'" [opened]="!narrow()" class="layout__aside">
+    <!-- On narrow viewports a link pick also dismisses the overlay. -->
+    <nav class="aside-nav" (click)="narrow() && drawer.close()">
       <a mat-button class="aside-nav__link" routerLink="/" routerLinkActive="aside-nav__link--active"
         [routerLinkActiveOptions]="{ exact: true }">
         Tooltips

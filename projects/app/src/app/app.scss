@@ -47,6 +47,9 @@ mat-toolbar {
 
 .layout__aside {
   width: 288px;
+  // Overlay mode on phones: never cover the whole screen, so the backdrop
+  // stays tappable.
+  max-width: 85vw;
   border-right: 1px solid var(--mat-sys-outline-variant);
 }
 

@@ -8,7 +8,12 @@ import {
   signal,
   computed,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { map } from 'rxjs';
+
+// Angular CDK
+import { BreakpointObserver } from '@angular/cdk/layout';
 
 // Angular Material
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -28,6 +33,9 @@ type Theme = 'light' | 'dark';
 export const THEME_STORAGE_KEY = 'hk-theme';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+/** Below 768px the aside overlays the content instead of pushing it. */
+const NARROW_QUERY = '(max-width: 767.98px)';
 
 @Component({
   selector: '[app-root]',
@@ -64,6 +72,14 @@ export class App {
   /** An explicit choice wins; otherwise the OS preference is followed. */
   readonly theme = computed<Theme>(() => this.#stored() ?? this.#system());
   readonly themeClass = computed(() => `${this.theme()}-mode`);
+
+  /** Narrow viewports get an overlay drawer (backdrop, outside click closes). */
+  protected readonly narrow = toSignal(
+    inject(BreakpointObserver)
+      .observe(NARROW_QUERY)
+      .pipe(map((state) => state.matches)),
+    { initialValue: false },
+  );
 
   constructor() {
     const media = this.#document.defaultView?.matchMedia?.(DARK_QUERY);
